@@ -1,6 +1,6 @@
-# ArbPlus Prompt Addendum - Part 1 of 4
+# ArbPlus Prompt Addendum - Part 1 of 6
 
-This is **Part 1 of 4** of a set of additions on top of the ArbPlus design prompt you already gave the LLM - send this as a follow-up message rather than re-sending the whole original. Send Parts 2, 3, and 4 in separate follow-up messages right after this one, in order; they continue the same numbered addition list (Addition 13 onward) and depend on context established here.
+This is **Part 1 of 6** of a set of additions on top of the ArbPlus design prompt you already gave the LLM - send this as a follow-up message rather than re-sending the whole original. Send Parts 2, 3, and so on in separate follow-up messages right after this one, in order; they continue the same numbered addition list (Addition 13 onward) and depend on context established here.
 
 ---
 

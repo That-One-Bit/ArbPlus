@@ -1,0 +1,52 @@
+#meta {
+    name: "Regex Pattern Matching";
+    version: "2.0";
+    author: "ArbPlus";
+    description: "Addition 13 - regex match and replace";
+}
+
+print("=== Regex match() ===");
+
+let result = match("hello world", r"(\w+) (\w+)");
+print("matched: ${result.matched}");
+print("match: ${result.match}");
+print("groups: ${result.groups}");
+print("index: ${result.index}");
+
+let noMatch = match("abc123", r"^\d+$");
+print("No match matched: ${noMatch.matched}");
+
+print("");
+print("=== Regex replace() ===");
+
+let text = "The year is 2024 and month is 07";
+let replaced = replace(text, r"\d+", "YEAR", regex: true);
+print("Replaced: ${replaced}");
+
+let simple = replace("hello world", "world", "ArbPlus");
+print("Simple replace: ${simple}");
+
+print("");
+print("=== Regex with capture groups ===");
+
+let date = "2024-07-23";
+let parts = match(date, r"(\d+)-(\d+)-(\d+)");
+print("Year: ${parts.groups[0]}");
+print("Month: ${parts.groups[1]}");
+print("Day: ${parts.groups[2]}");
+
+print("");
+print("=== Regex replace with backreferences ===");
+
+let date2 = "2024-07-23";
+let reformatted = replace(date2, r"(\d+)-(\d+)-(\d+)", r"\2/\3/\1", regex: true);
+print("Reformatted: ${reformatted}");
+
+print("");
+print("=== Regex on inline data ===");
+
+let csvData = "name,age,city\nAlice,30,NYC\nBob,25,LA";
+let found = match(csvData, r"(\w+),(\d+),(\w+)");
+print("First row matched: ${found.matched}");
+print("Name: ${found.groups[0]}");
+print("Age: ${found.groups[1]}");

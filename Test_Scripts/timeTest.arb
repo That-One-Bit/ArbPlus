@@ -1,0 +1,12 @@
+let start = snap.time(Hour : 0, Minute : 0, Second : 0);
+
+print(start, fg:blue);
+print("\n");
+
+let iter = input("How long should the count run: ", fg:cyan);
+
+for (i = 1 to iter) {
+    count = count.time(Second : 0);
+    print(count);
+    wait(0, 1, 0);
+}

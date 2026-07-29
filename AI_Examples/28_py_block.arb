@@ -1,0 +1,76 @@
+// === Example 28: Inline Python py{ } Block ===
+// Addition 26: py{ ... } escape block for running Python directly
+
+print("=== py{} Basic Math ===");
+let x = 10;
+let y = 3;
+py{
+    result = x * y + 7
+    print(f"Python computed: {x} * {y} + 7 = {result}")
+}
+// Variables sync back to ArbPlus
+let answer = 0;
+py{
+    answer = x ** y
+}
+print("x^y from Python:", answer);
+
+print("/n=== py{} with Standard Library ===");
+let data = "hello world foo bar baz";
+let word_count = 0;
+py{
+    import re
+    words = re.findall(r'\w+', data)
+    word_count = len(words)
+    print(f"Word count: {word_count}")
+    print(f"Words: {words}")
+}
+print("Back in ArbPlus, word_count =", word_count);
+
+print("/n=== py{} JSON Processing ===");
+let json_str = '{"name": "ArbPlus", "version": 2.0, "features": [1, 2, 3]}';
+let name_val = "";
+let feature_count = 0;
+py{
+    import json
+    obj = json.loads(json_str)
+    name_val = obj["name"]
+    feature_count = len(obj["features"])
+    print(f"Parsed JSON: name={obj['name']}, version={obj['version']}")
+}
+print("Name from JSON:", name_val);
+print("Feature count:", feature_count);
+
+print("/n=== py{} Type Translation ===");
+let my_list = [1, 2, 3, 4, 5];
+let my_map = map{ "a": 1, "b": 2 };
+let sum_result = 0;
+py{
+    # ArbPlus list becomes Python list, map becomes Python dict
+    total = sum(my_list)
+    sum_result = total
+    print(f"Sum of list: {total}")
+    print(f"Map keys: {list(my_map.keys())}")
+    print(f"Map values: {list(my_map.values())}")
+}
+print("Sum result:", sum_result);
+
+print("/n=== py{} Stdlib-Only Enforcement ===");
+try {
+    py{
+        import numpy
+    }
+} catch (e) {
+    print("Caught third-party import:", e);
+}
+
+print("/n=== py{} Error Handling ===");
+try {
+    py{
+        x = 1 / 0
+    }
+} catch (e) {
+    print("Caught Python error:", e);
+}
+
+print("/nAll py{} tests passed!");

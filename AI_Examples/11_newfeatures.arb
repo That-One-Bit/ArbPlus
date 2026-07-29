@@ -1,0 +1,20 @@
+// Addition 1-3: String interpolation, /n newlines, and brightness
+#meta { name: "NewFeatures"; version: "2.0"; description: "Tests additions 1-3"; }
+
+print("=== String Interpolation ===");
+let name = "World";
+let count = 42;
+print("Hello, ${name}!");
+print("Count is ${count} and doubled is ${count * 2}");
+print("Missing var: '${nonexistent}' should be empty");
+
+print("");
+print("=== /n Newline Token ===");
+print("Line 1/nLine 2/nLine 3");
+print("Literal //n stays as /n");
+
+print("");
+print("=== Text Brightness ===");
+print("Dim text", fg: cyan, b: dim);
+print("Normal text", fg: cyan, b: normal);
+print("Bright text", fg: cyan, b: bright);

@@ -1,0 +1,27 @@
+// Inline C block example
+#meta {
+    name: "CBlockExample";
+    version: "1.0";
+    author: "ArbPlus";
+    description: "Demonstrates inline C code blocks";
+    languages: "ArbPlus, C";
+}
+
+print("=== Inline C Block ===");
+print("Before C execution");
+c{
+    printf("Hello from C!\n");
+    printf("Math: 7 * 6 = %d\n", 7 * 6);
+    for (int i = 0; i < 3; i++) {
+        printf("  C loop: %d\n", i);
+    }
+}
+print("After C execution");
+
+print("");
+print("=== ArbPlus + C Together ===");
+let x = 10;
+print("ArbPlus variable x = " .. toString(x));
+c{
+    printf("C sees: ArbPlus computed %d\n", ${x});
+}

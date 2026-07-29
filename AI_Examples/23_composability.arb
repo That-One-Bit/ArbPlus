@@ -1,0 +1,89 @@
+#meta {
+    name: "Cross-Feature Composability";
+    version: "2.0";
+    author: "ArbPlus";
+    description: "Addition 21 - data functions work on any source";
+}
+
+print("=== txtRC on inline string data ===");
+
+let csvData = "name,age,city/nAlice,30,NYC/nBob,25,LA/nCarol,35,Chicago";
+print("Row 2, Col 1: ${txtRC(2, 1, csvData)}");
+print("Row 2, Col 2: ${txtRC(2, 2, csvData)}");
+print("Row 3, Col 3: ${txtRC(3, 3, csvData)}");
+
+print("");
+print("=== txtRC on tab-delimited data ===");
+
+let tsvData = "name\tage\tcity/nAlice\t30\tNYC/nBob\t25\tLA";
+print("Row 2, Col 1: ${txtRC(2, 1, tsvData)}");
+print("Row 2, Col 3: ${txtRC(2, 3, tsvData)}");
+
+print("");
+print("=== txtRC on fetched data ===");
+
+try {
+    let resp = fetch.url("https://raw.githubusercontent.com/That-One-Bit/ArbPlus/main/README.md");
+    print("Fetched README, status: ${resp.status}");
+    // txtRC on the body directly - no temp file needed
+    let line1 = txtRC(1, 1, resp.body);
+    print("First line: ${line1}");
+    let line2 = txtRC(2, 1, resp.body);
+    print("Second line: ${line2}");
+    // Also txtRC on the full fetch result map (auto-extracts body)
+    let line1b = txtRC(1, 1, resp);
+    print("Via map: ${line1b}");
+} catch (err) {
+    print("Caught: ${err}");
+}
+
+print("");
+print("=== txtRC on file-read data ===");
+
+writeFile("./testdata.txt", "alpha,beta,gamma/n1,2,3/n4,5,6");
+let fileData = readFile("./testdata.txt");
+print("Row 1, Col 2: ${txtRC(1, 2, fileData)}");
+print("Row 2, Col 1: ${txtRC(2, 1, fileData)}");
+
+print("");
+print("=== addr.hex on string data ===");
+
+let binary = "ABCDEF0123456789";
+print("addr.hex on string: ${addr.hex(0x41)}");
+
+print("");
+print("=== match() on fetched data ===");
+
+try {
+    let resp = fetch.url("https://example.com");
+    let titleMatch = match(resp.body, r"<title>(.*?)</title>");
+    print("Title found: ${titleMatch.matched}");
+    if (titleMatch.matched) {
+        print("Title: ${titleMatch.groups[0]}");
+    }
+} catch (err) {
+    print("Caught: ${err}");
+}
+
+print("");
+print("=== replace() on fetched data ===");
+
+try {
+    let resp = fetch.url("https://example.com");
+    let cleaned = replace(resp.body, r"<[^>]+>", "", regex: true);
+    print("HTML stripped length: ${len(cleaned)}");
+    print("First 80 chars: ${substr(cleaned, 0, 80)}");
+} catch (err) {
+    print("Caught: ${err}");
+}
+
+print("");
+print("=== Principle: data functions are source-agnostic ===");
+print("txtRC, addr, match, replace all work on:");
+print("  - readFile() results (strings)");
+print("  - fetch.url() results (maps with body)");  
+print("  - inline string literals");
+print("  - any ArbString or ArbMap value");
+
+// Cleanup
+dir.del("./testdata.txt");

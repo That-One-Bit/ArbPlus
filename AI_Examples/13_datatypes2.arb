@@ -1,0 +1,40 @@
+// Addition 7: Map/Dictionary type
+// Addition 10: Random numbers
+// Addition 12: args() and env()
+#meta { name: "DataTypes2"; version: "2.0"; description: "Tests additions 7,10,12"; }
+
+print("=== Map Type ===");
+let config = map{ "name": "ArbPlus", "version": "2.0", "debug": "true" };
+print("Name: ${config['name']}");
+print("Version: ${config['version']}");
+print("Missing key: '${config['missing']}'");
+
+config["new_key"] = "added";
+print("After adding: ${config['new_key']}");
+
+print("Keys: " .. toString(keys(config)));
+print("Has 'name': " .. toString(has(config, "name")));
+print("Has 'xyz': " .. toString(has(config, "xyz")));
+
+print("");
+print("=== Random Numbers ===");
+print("random(): ${random()}");
+print("random(): ${random()}");
+print("randInt(1,100): ${randInt(1, 100)}");
+random.seed(42);
+print("Seeded randInt(1,10): ${randInt(1, 10)}");
+print("Seeded randInt(1,10): ${randInt(1, 10)}");
+random.seed(42);
+print("Reseeded (same): ${randInt(1, 10)}");
+
+print("");
+print("=== Environment Variables ===");
+print("HOME = ${env('HOME')}");
+print("PATH exists: " .. toString(len(env('PATH')) > 0));
+print("Missing env: '${env('NONEXISTENT_VAR_XYZ')}'");
+
+print("");
+print("=== CLI Args ===");
+let allArgs = args();
+print("Arg count: ${len(allArgs)}");
+print("Arg 0: '${args(0)}'");

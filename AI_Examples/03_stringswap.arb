@@ -1,0 +1,34 @@
+// String concatenation and swap example
+#meta {
+    name: "StringSwap";
+    version: "1.0";
+    author: "ArbPlus";
+    description: "Concat and swap demonstration";
+}
+
+let a = "Hello";
+let b = "World";
+let combined = a .. ", " .. b .. "!";
+print("Concat operator: " .. combined);
+
+let c = concat("Arb", "Plus", " ", "rules");
+print("concat(): " .. c);
+
+// Auto-coercion: + concatenates strings too
+let num = 42;
+let msg = "Answer: " .. toString(num);
+print(msg);
+
+// Single-line swap
+let x = 10;
+let y = 99;
+print("Before swap: x=" .. toString(x) .. ", y=" .. toString(y));
+x <> y;
+print("After swap:  x=" .. toString(x) .. ", y=" .. toString(y));
+
+// Swap different types
+let p = "text";
+let q = 77;
+print("Before swap: p=" .. toString(p) .. ", q=" .. toString(q));
+p <> q;
+print("After swap:  p=" .. toString(p) .. ", q=" .. toString(q));

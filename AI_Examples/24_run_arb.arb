@@ -1,0 +1,33 @@
+#meta {
+    name: "Variable Passing Between Scripts";
+    version: "2.0";
+    author: "ArbPlus";
+    description: "Addition 22 - run.arb() to invoke sub-scripts with variable passing";
+}
+
+print("=== run.arb() with variable passing ===");
+
+// Pass variables to a child script
+let result = run.arb("./child.arb", greeting: "Hello from parent!", count: 42, pi: 3.14);
+print("Child returned: ${result}");
+
+print("");
+print("=== Type info travels intact ===");
+print("Result type: ${result.type}");
+
+print("");
+print("=== run.arb without return value ===");
+let void_result = run.arb("./child_noreturn.arb", msg: "No return here");
+print("Void result: ${void_result}");
+print("Void result is null: ${void_result == null}");
+
+print("");
+print("=== Sending map and arb types ===");
+let myMap = map{ "name": "Alice", "age": "30" };
+let r2 = run.arb("./child_types.arb", data: myMap);
+print("Map came back: ${r2}");
+
+print("");
+print("=== run.arb is distinct from #import ===");
+print("#import loads functions from a module (shared at parse time)");
+print("run.arb executes a full script as a sub-process (fresh scope, return value)");

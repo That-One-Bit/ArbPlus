@@ -1,0 +1,51 @@
+// Addition 4: repeat...until loop
+// Addition 6: try/catch/finally
+// Addition 9: switch/case
+#meta { name: "ControlFlow2"; version: "2.0"; description: "Tests additions 4,6,9"; }
+
+print("=== repeat...until ===");
+let i = 1;
+repeat {
+    print("  iteration ${i}");
+    i = i + 1;
+} until (i > 5);
+
+print("");
+print("=== repeat with break ===");
+let j = 0;
+repeat {
+    j = j + 1;
+    if (j > 3) { break; }
+    print("  j = ${j}");
+} until (j > 100);
+
+print("");
+print("=== switch/case ===");
+let grade = "B";
+switch (grade) {
+    case "A": { print("Excellent!"); }
+    case "B": { print("Good job!"); }
+    case "C": { print("Passing"); }
+    case "F": { print("Failed"); }
+    default: { print("Unknown grade"); }
+}
+
+print("");
+print("=== try/catch/finally ===");
+try {
+    print("Trying to read missing file...");
+    let data = readFile("./nonexistent_file.txt");
+    print("This won't print");
+} catch (err) {
+    print("Caught error: ${err}");
+} finally {
+    print("Finally block always runs");
+}
+
+print("");
+print("=== try without catch (finally only) ===");
+try {
+    print("In try block");
+} finally {
+    print("Cleanup runs");
+}

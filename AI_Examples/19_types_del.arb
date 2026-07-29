@@ -1,0 +1,85 @@
+#meta {
+    name: "Type Switching and Variable Deletion";
+    version: "2.0";
+    author: "ArbPlus";
+    description: "Additions 15, 16 - .type() casting and del()";
+}
+
+--Function util.testScope() {
+    let local = "inside function";
+    del(local);
+    print("Deleted local inside function");
+    return "done";
+}
+
+print("=== Manual Type Switching (.type()) ===");
+
+let age = 42;
+let ageStr = age.type(string);
+print("age (int): ${age}");
+print("age.type(string): ${ageStr}");
+
+let pi = 3.14159;
+let piStr = pi.type(string);
+print("pi.type(string): ${piStr}");
+
+let flag = true;
+let flagStr = flag.type(string);
+print("flag.type(string): ${flagStr}");
+
+let text = "123";
+let textInt = text.type(int);
+print("text.type(int): ${textInt}");
+
+let floatStr = "3.14";
+let floatVal = floatStr.type(float);
+print("floatStr.type(float): ${floatVal}");
+
+// .type() returns a NEW value - original unchanged
+print("Original age still: ${age}");
+print("Original text still: ${text}");
+
+print("");
+print("=== Invalid cast (catchable) ===");
+
+try {
+    let bad = "hello".type(int);
+    print("Should not reach here: ${bad}");
+} catch (err) {
+    print("Caught: ${err}");
+}
+
+print("");
+print("=== Variable Deletion (del) ===");
+
+let temp = "temporary value";
+print("temp before: ${temp}");
+
+del(temp);
+print("temp after del: exists? no");
+
+// Re-declare with same name (should work since it was deleted)
+let temp = "new value";
+print("temp re-declared: ${temp}");
+
+print("");
+print("=== del error handling ===");
+
+try {
+    del(nonexistent);
+} catch (err) {
+    print("Caught deleting undeclared: ${err}");
+}
+
+try {
+    del(temp);
+    del(temp);  // already deleted
+} catch (err) {
+    print("Caught double-delete: ${err}");
+}
+
+print("");
+print("=== del is scope-aware ===");
+
+let scopeResult = util.testScope();
+print("Function result: ${scopeResult}");

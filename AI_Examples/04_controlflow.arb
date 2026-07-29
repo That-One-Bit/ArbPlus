@@ -1,0 +1,53 @@
+// Control flow: not, loop with break, input/inline-if
+#meta {
+    name: "ControlFlow";
+    version: "1.0";
+    author: "ArbPlus";
+    description: "Conditionals, loops, break, not operator";
+}
+
+let items = ["apple", "banana", "cherry", "date", "elderberry"];
+
+print("Loop with break:");
+for (i = 1 to 10) {
+    if (i > 5) {
+        print("  Breaking at i=" .. toString(i));
+        break;
+    }
+    print("  i = " .. toString(i));
+}
+
+print("");
+print("Loop with not operator:");
+for (item in items) {
+    if (not contains(item, "e")) {
+        print("  No 'e' in: " .. item);
+    }
+}
+
+print("");
+print("While loop:");
+let count = 3;
+while (count > 0) {
+    print("  Countdown: " .. toString(count));
+    count = count - 1;
+}
+
+print("");
+print("Inline-if:");
+let val = 7;
+let label = (val > 5 ? "high" : "low");
+print("  val=" .. toString(val) .. " is " .. label);
+
+print("");
+print("If/elif/else:");
+let score = 75;
+if (score >= 90) {
+    print("  Grade: A");
+} elif (score >= 80) {
+    print("  Grade: B");
+} elif (score >= 70) {
+    print("  Grade: C");
+} else {
+    print("  Grade: F");
+}

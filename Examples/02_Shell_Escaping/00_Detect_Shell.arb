@@ -1,0 +1,14 @@
+ #meta {
+    name: "Shell Escape";
+    version: "1.0";
+    author: "ThatOneBit";
+    description: "Detecting the OS and using the appropriate shell commands.";
+    languages: "Arb, Batch, Bash";
+}
+
+if (os.name == "Windows" || "windows") {
+    cmd{echo This is from batch.}
+}  elif (os.name == "Linux" || "linux") {
+    cmd{echo This is from bash.}
+}  else {print("This script supports CMD and SH, make sure one of these is available on your machine.")}
+exit

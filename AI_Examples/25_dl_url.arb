@@ -1,0 +1,57 @@
+#meta {
+    name: "Download Function";
+    version: "2.0";
+    author: "ArbPlus";
+    description: "Addition 23 - dl.url() downloads URL to disk";
+}
+
+print("=== dl.url() basic download ===");
+
+try {
+    let saved = dl.url("https://raw.githubusercontent.com/That-One-Bit/ArbPlus/main/README.md", filename: "test_download.md");
+    print("Saved to: ${saved}");
+    
+    // Verify by reading back
+    let content = readFile("test_download.md");
+    print("Downloaded content length: ${len(content)}");
+    print("First 50 chars: ${content.substring(0, 50)}");
+} catch (err) {
+    print("Download error: ${err}");
+}
+
+print("");
+print("=== dl.url() with Content-Disposition ===");
+
+try {
+    let saved2 = dl.url("https://httpbin.org/bytes/100", filename: "binary_test.bin");
+    print("Binary saved to: ${saved2}");
+    let exists = fileExists("binary_test.bin");
+    print("File exists: ${exists}");
+} catch (err) {
+    print("Binary download error (may be network-limited): ${err}");
+}
+
+print("");
+print("=== dl.url() filename from URL ===");
+
+try {
+    let saved3 = dl.url("https://raw.githubusercontent.com/That-One-Bit/ArbPlus/main/README.md");
+    print("Auto-named: ${saved3}");
+} catch (err) {
+    print("Auto-named download error: ${err}");
+}
+
+print("");
+print("=== dl.url() network error handling ===");
+
+try {
+    dl.url("https://this-domain-does-not-exist-12345.com/file.txt");
+    print("Should have failed!");
+} catch (err) {
+    print("Caught network error: ${err}");
+}
+
+// Cleanup
+try { dir.del("test_download.md"); } catch (err) {}
+try { dir.del("binary_test.bin"); } catch (err) {}
+try { dir.del("README.md"); } catch (err) {}

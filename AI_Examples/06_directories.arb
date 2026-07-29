@@ -1,0 +1,40 @@
+// Directory operations example
+#meta {
+    name: "DirExample";
+    version: "1.0";
+    author: "ArbPlus";
+    description: "Directory make, list, name, del";
+}
+
+// Make a directory with files
+dir.make("./testdir", "a.txt;b.txt;c.arb");
+print("Created ./testdir with files");
+
+// List all contents
+let all = dir.list("./testdir");
+print("All contents: " .. toString(all));
+
+// List files only
+let files = dir.list("./testdir", "files");
+print("Files only: " .. toString(files));
+
+// List folders only
+let folders = dir.list("./testdir", "folders");
+print("Folders only: " .. toString(folders));
+
+// Rename the directory
+dir.name("./testdir", "renamed_dir");
+print("Renamed to renamed_dir");
+
+// Verify rename
+if (fileExists("./renamed_dir/a.txt")) {
+    print("Rename successful, files still there");
+}
+
+// Clean up
+dir.del("./renamed_dir");
+print("Deleted ./renamed_dir");
+
+// Verify deletion
+let after = dir.list(".", "folders");
+print("Folders in current dir: " .. toString(after));

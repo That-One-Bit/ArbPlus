@@ -1,0 +1,12 @@
+#meta {
+    name: "ArbInArb";
+    version: "1.0";
+    author: "ThatOneBit";
+    description: "An Arb Interpreter made in Arb";
+}
+
+#import ArbInterp;
+
+let interp_code = input("Enter the Arb code that you would like to run, operated via semicolons: ", fg: cyan);
+
+ArbInterp.run(interp_code);

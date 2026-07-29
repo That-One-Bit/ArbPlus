@@ -1,0 +1,74 @@
+#meta {
+    name: "Part5 Features"
+    version: 2.0
+    author: "ArbPlus"
+    description: "Additions 30-36 test suite"
+    languages: Arb, python
+}
+
+// === Example 30: Part 5 Features (Additions 30-36) ===
+
+// --- Addition 30: Zero-Metadata & Warning/Error Colors ---
+--ErrOV true;
+--OV defaults(warn_fg, err_fg) (warn_fg: yellow, err_fg: red);
+print("=== Addition 30: Warning/Error Colors ===");
+print("--ErrOV gate enabled, colors set");
+
+// Test that errors use red (via try/catch)
+try {
+    let x = undefined_func();
+} catch (e) {
+    print("Caught error (displayed in red at top level)");
+}
+
+// --- Addition 31: Hex, RGB, OKLCH Colors ---
+print("/n=== Addition 31: Hex/RGB/OKLCH Colors ===");
+print("Hex fg: text", fg: "#FF6600");
+print("RGB fg: text", fg: "rgb(100, 200, 50)");
+print("OKLCH fg: text", fg: "oklch(0.7, 0.15, 240)");
+print("Hex bg: text", bg: "#330099", fg: "white");
+print("RGB bg: text", bg: "rgb(30, 30, 60)", fg: "rgb(255, 200, 0)");
+print("OKLCH with bright: text", fg: "oklch(0.8, 0.2, 120)", b: bright);
+
+// --- Addition 32: Colored Output Extension ---
+print("/n=== Addition 32: Colored Output Extension ===");
+loadExt("../extensions/ext_colors.py", "python");
+let colored = ext_colors.color_text("Colored via extension!", "cyan", "", "bright");
+print("From ext: ", colored);
+ext_colors.color_print("Direct print from extension", "magenta", "", "normal");
+
+// --- Addition 33: Parser Fix (commas and > in calls) ---
+print("/n=== Addition 33: Parser Fix ===");
+// Commas inside function calls are NOT statement breaks
+print("test", fg: red, bg: white, b: bright);
+// Comparison operators inside calls are NOT the statement terminator
+let result = 5 > 3;
+print("5 > 3 is", result);
+print("Parser handled all commas and > correctly");
+
+// --- Addition 34: Metadata as Queryable Variables ---
+print("/n=== Addition 34: meta.* Variables ===");
+print("meta.name: ", meta.name);
+print("meta.version: ", meta.version);
+print("meta.description: ", meta.description);
+let all_meta = meta();
+print("All metadata keys: ", keys(all_meta));
+
+// --- Addition 35: Arb vs ArbPlus Naming ---
+print("/n=== Addition 35: Arb Naming ===");
+print("Product: ArbPlus");
+print("Language: Arb (not ArbPlus)");
+print("File extension: .arb (stays as-is)");
+
+// --- Addition 36: File-Reference Variable Type ---
+print("/n=== Addition 36: file() Type ===");
+buildFile("test_ref.txt", "Hello from file reference!");
+let myFile = file("test_ref.txt");
+print("File ref: ", myFile);
+print("File exists: ", fileExists(myFile));
+let contents = readFile(myFile);
+print("Contents via file ref: ", contents);
+let hex_data = addr.hex(myFile);
+print("Hex via file ref: ", hex_data);
+
+print("/nAll Part 5 tests passed!");

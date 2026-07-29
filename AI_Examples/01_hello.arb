@@ -1,0 +1,11 @@
+// Hello World example for ArbPlus
+#meta {
+    name: "HelloWorld";
+    version: "1.0";
+    author: "ArbPlus";
+    description: "Minimal hello world with colored output";
+}
+
+print("Hello, World!");
+print("Welcome to ArbPlus!", fg: cyan);
+print("Red on black", fg: red, bg: black);

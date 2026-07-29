@@ -1,0 +1,10 @@
+// Hello world in Arb
+#meta {
+    name: "HelloWorld";
+    version: "1.0";
+    author: "ThatOneBit";
+    description: "Hello World.";
+}
+
+print("Hello world.");
+exit

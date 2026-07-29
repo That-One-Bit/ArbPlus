@@ -1,0 +1,14 @@
+#meta {
+    name: "Child Script";
+    version: "1.0";
+    author: "ArbPlus";
+    description: "Child script for run.arb() test - receives variables from parent";
+}
+
+// Variables arrive pre-populated from parent
+print("Child received greeting: ${greeting}");
+print("Child received count: ${count}");
+print("Child received pi: ${pi}");
+
+// Return a value back to parent
+return("Child says hi, count was ${count}");

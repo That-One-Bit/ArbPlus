@@ -1,0 +1,17 @@
+// Addition 2: open.url and open.app (demonstration - doesn't actually open in sandbox)
+#meta { name: "OpenTest"; version: "2.0"; description: "Tests open.url/open.app"; }
+
+print("=== open.url ===");
+let query = "arbplus language";
+print("Would open: https://example.com/search?q=${query}");
+
+print("");
+print("=== open.app ===");
+print("Would open: gimp with file photo.png");
+print("open.app('gimp', args: 'photo.png') launches GIMP with the file");
+
+print("");
+print("=== Key Bindings ===");
+bindKey("F1", "showHelp");
+bindKey("Ctrl+C", "exitScript");
+print("Key bindings registered (demonstration only - no event loop in script mode)");

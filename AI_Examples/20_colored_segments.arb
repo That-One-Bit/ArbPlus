@@ -1,0 +1,60 @@
+#meta {
+    name: "Colored Segments";
+    version: "2.0";
+    author: "ArbPlus";
+    description: "Addition 17 - color() for per-segment coloring";
+}
+
+print("=== Colored Segments with color() ===");
+
+// Single color segment
+let redText = color("Important!", fg: red, b: bright);
+print(redText);
+
+// Mix colored and plain text in one print call
+print("Normal " + color("RED", fg: red, b: bright) + " and " + color("BLUE", fg: blue, b: bright) + " more normal");
+
+// color() with background
+print(color("Warning", fg: yellow, bg: red, b: bright));
+
+// Color with hex values
+print(color("Custom color", fg: "#FF8800", b: bright));
+
+print("");
+print("=== Colored segments with interpolation ===");
+
+let name = "World";
+let msg = "Hello, " + color("${name}!", fg: green, b: bright);
+print(msg);
+
+// Interpolation inside color()
+print(color("Count: ${42}", fg: cyan, b: bright));
+
+print("");
+print("=== Nesting color() ===");
+
+// Inner color wins for overlapping styling
+let nested = color(color("inner", fg: red) + " outer", fg: blue);
+print("Nested: " + nested);
+
+print("");
+print("=== Colored with default colors ===");
+
+// Set default colors
+--OV defaults(fg, bg, b) (fg: cyan, bg: black, b: bright);
+
+// Plain segments use defaults, colored segments override
+print("Default " + color("Override", fg: red) + " back to default");
+
+// Reset by setting empty defaults
+--OV defaults(fg, bg, b) ();
+
+print("");
+print("=== color() in different contexts ===");
+
+let greeting = color("Welcome", fg: green, b: bright) + " to " + color("ArbPlus!", fg: magenta, b: bright);
+print(greeting);
+
+// Color a variable value
+let status = "READY";
+print("Status: " + color(status, fg: green, b: bright));

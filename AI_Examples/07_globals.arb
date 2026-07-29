@@ -1,0 +1,46 @@
+// OS globals example
+#meta {
+    name: "GlobalsExample";
+    version: "1.0";
+    author: "ArbPlus";
+    description: "snap.time, count.time, cs, locale";
+}
+
+// snap.time — one-shot snapshot
+print("=== snap.time ===");
+let ts = snap.time();
+print("Current time: " .. ts);
+let detailed = snap.time(Year: 0, Month: 0, Day: 0);
+print("Detailed: " .. detailed);
+
+// count.time — live sampling (returns on each call)
+print("");
+print("=== count.time ===");
+let t1 = count.time();
+print("Sample 1: " .. t1);
+let t2 = count.time();
+print("Sample 2: " .. t2);
+
+// cs() — color scheme
+print("");
+print("=== Color Scheme ===");
+let scheme = cs();
+print("Current scheme: " .. scheme);
+let isDark = cs(dark);
+print("Is dark? " .. toString(isDark));
+let isLight = cs(light);
+print("Is light? " .. toString(isLight));
+
+// locale family
+print("");
+print("=== Locale ===");
+print("Preferred: " .. locale.prf);
+print("Current: " .. locale.cur);
+print("Alternatives: " .. locale.alt);
+
+// Other globals
+print("");
+print("=== Other Globals ===");
+print("OS: " .. os.name);
+print("Battery: " .. battery());
+print("Network: " .. toString(network()));

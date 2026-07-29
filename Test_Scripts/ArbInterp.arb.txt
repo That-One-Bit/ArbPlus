@@ -1,0 +1,10 @@
+#meta {
+    name: "ArbInterp";
+    version: "0.0";
+    author: "ThatOneBit";
+    description: "Arb Interpreter Module";
+}
+
+--Function pub.run(interp_code) {
+    print(interp_code);
+}

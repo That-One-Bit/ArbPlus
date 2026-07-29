@@ -1,0 +1,90 @@
+// Full example: arb, inline C, extension, all features
+#meta {
+    name: "FullExample";
+    version: "1.0";
+    author: "ArbPlus";
+    description: "Exercises every major feature";
+    image: file:./icon.png;
+    dependencies: "ext_example.py 1.0";
+    languages: "ArbPlus, C, Python";
+}
+
+#use batch;
+#import ext_example;
+
+--OV print myprint;
+
+--Function pub.factorial(n: int) {
+    if (n <= 1) {
+        return 1;
+    }
+    return mul(n, factorial(sub(n, 1)));
+}
+
+--Function util.greet(name) {
+    let greeting = "Hi, " .. name .. "!";
+    return greeting;
+}
+
+// 1. Variables and types
+let x = 42;
+let pi = 3.14159;
+let flag = true;
+let items = [1, 2, 3, 4, 5];
+
+myprint("=== Variables ===");
+myprint("int: " .. toString(x));
+myprint("float: " .. toString(pi));
+myprint("bool: " .. toString(flag));
+myprint("list: " .. toString(items));
+
+// 2. arb container
+myprint("");
+myprint("=== arb Container ===");
+let mydata = arb{ 0x01("hello"), 0x02(42), 0x03(3.14), 0x04(true) };
+myprint("arb: " .. toString(mydata));
+myprint("arb[0]: " .. toString(mydata[0]));
+myprint("arb[1]: " .. toString(mydata[1]));
+myprint("arb len: " .. toString(len(mydata)));
+
+// 3. Functions and recursion
+myprint("");
+myprint("=== Functions ===");
+myprint("factorial(5) = " .. toString(factorial(5)));
+myprint(greet("ArbPlus"));
+
+// 4. Control flow
+myprint("");
+myprint("=== Control Flow ===");
+for (i = 1 to 5) {
+    if (not (i == 3)) {
+        myprint("  i=" .. toString(i));
+    }
+}
+
+// 5. Inline-if
+let grade = (x > 50 ? "pass" : "fail");
+myprint("Grade: " .. grade);
+
+// 6. Shell escape
+myprint("");
+myprint("=== Shell ===");
+cmd{ echo "Hello from shell" };
+
+// 7. OS globals
+myprint("");
+myprint("=== OS Globals ===");
+myprint("Time: " .. snap.time());
+myprint("Scheme: " .. cs());
+myprint("Locale: " .. locale.prf);
+myprint("OS: " .. os.name);
+
+// 8. File operations
+myprint("");
+myprint("=== Files ===");
+writeFile("./full_test.txt", "ArbPlus was here!");
+if (fileExists("./full_test.txt")) {
+    myprint("File written and verified");
+    let content = readFile("./full_test.txt");
+    myprint("Content: " .. content);
+}

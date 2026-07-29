@@ -1,0 +1,63 @@
+#meta {
+    name: "Network Fetch";
+    version: "2.0";
+    author: "ArbPlus";
+    description: "Addition 14 - fetch.url for HTTP requests";
+}
+
+print("=== fetch.url() ===");
+
+try {
+    let response = fetch.url("https://example.com");
+    print("Status: ${response.status}");
+    print("OK: ${response.ok}");
+    print("Body length: ${len(response.body)}");
+    print("First 100 chars: ${substr(response.body, 0, 100)}");
+    
+    // Access response headers
+    let ct = response.headers["Content-Type"];
+    print("Content-Type: ${ct}");
+} catch (err) {
+    print("Caught fetch error: ${err}");
+}
+
+print("");
+print("=== fetch.url with txtRC (Addition 21 composability) ===");
+
+try {
+    let csv = fetch.url("https://raw.githubusercontent.com/That-One-Bit/ArbPlus/main/README.md");
+    print("Fetched README, status: ${csv.status}");
+    print("Body length: ${len(csv.body)}");
+    // Use txtRC on fetched data directly (no temp file needed)
+    let firstLine = txtRC(1, 1, csv.body);
+    print("First line: ${firstLine}");
+} catch (err) {
+    print("Caught: ${err}");
+}
+
+print("");
+print("=== fetch.url error handling ===");
+
+try {
+    let bad = fetch.url("https://nonexistent.invalid.domain.example");
+    print("Status: ${bad.status}");
+    print("OK: ${bad.ok}");
+} catch (err) {
+    print("Caught network error: ${err}");
+}
+
+print("");
+print("=== fetch with regex (composability) ===");
+
+try {
+    let resp = fetch.url("https://example.com");
+    // Use regex match on fetched HTML
+    let titleMatch = match(resp.body, r"<title>(.*?)</title>");
+    if (titleMatch.matched) {
+        print("Page title: ${titleMatch.groups[0]}");
+    } else {
+        print("No title found");
+    }
+} catch (err) {
+    print("Caught: ${err}");
+}

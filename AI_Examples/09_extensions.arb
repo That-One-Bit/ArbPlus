@@ -1,0 +1,27 @@
+// Extension test: loads a Python extension and calls its functions
+#meta {
+    name: "ExtTest";
+    version: "1.0";
+    author: "ArbPlus";
+    description: "Tests the Python extension ABI";
+    dependencies: "ext_example.py 1.0";
+    languages: "ArbPlus, Python";
+}
+
+#import ext_example;
+
+print("Loading extension...");
+loadExt("../extensions/ext_example.py", "python");
+
+print("");
+print("Calling ext.sayHello:");
+let greeting = ext.sayHello("ArbPlus");
+print(greeting);
+
+print("");
+print("Calling ext.fetchUrl (example.com):");
+let response = ext.fetchUrl("http://example.com");
+print("Response length: " .. toString(len(response)));
+
+print("");
+print("Extension test complete!");

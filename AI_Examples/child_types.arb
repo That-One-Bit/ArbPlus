@@ -1,0 +1,12 @@
+#meta {
+    name: "Child Types";
+    version: "1.0";
+    author: "ArbPlus";
+    description: "Child script receiving map and arb types";
+}
+
+print("Child got map: ${data}");
+print("Map name: ${data.name}");
+print("Child got arb: ${binary}");
+
+return("Types received OK");

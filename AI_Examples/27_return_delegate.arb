@@ -1,0 +1,117 @@
+#meta {
+    name: "Return Any Type and --F Delegation";
+    version: "2.0";
+    author: "ArbPlus";
+    description: "Addition 25 - return() any type + --F delegate return";
+}
+
+--Function test.retInt() { return(42); }
+--Function test.retFloat() { return(3.14); }
+--Function test.retString() { return("hello world"); }
+--Function test.retBool() { return(true); }
+--Function test.retArray() { return([1, 2, 3]); }
+--Function test.retList() { return(list("a", "b", "c")); }
+--Function test.retArb() { return(arb{ 0x01(0x48656C6C6F) }); }
+--Function test.retMap() { return(map{ "name": "Alice", "age": "30" }); }
+--Function test.retColor() { return(color("colored return", fg: cyan, b: bright)); }
+--Function test.retNothing() {
+    print("doing work...");
+    return();
+    print("this should NOT print");
+}
+--Function test.handlerA() {
+    print("Handler A called");
+    return("result from A");
+}
+--Function test.handlerB() {
+    print("Handler B called");
+    return("result from B");
+}
+--Function test.dispatcher(choice) {
+    if (choice == "A") {
+        --F test.handlerA();
+    }
+    if (choice == "B") {
+        --F test.handlerB();
+    }
+    return("default");
+}
+--Function test.adder(a, b) {
+    print("Adding ${a} + ${b}");
+    return("${a} + ${b} = ${a + b}");
+}
+--Function test.delegateWithArgs() {
+    print("Delegating to adder...");
+    --F test.adder(10, 32);
+}
+--Function test.faultyFunc() {
+    throw("intentional error");
+}
+--Function test.tryDelegate() {
+    try {
+        --F test.faultyFunc();
+    } catch (err) {
+        print("Caught in tryDelegate: ${err}");
+        return("error handled");
+    }
+}
+--Function test.inner() {
+    return("inner value");
+}
+--Function test.viaF() {
+    --F test.inner();
+}
+--Function test.viaReturn() {
+    return(test.inner());
+}
+
+print("=== return() with any type ===");
+
+print("int: ${test.retInt()}");
+print("float: ${test.retFloat()}");
+print("string: ${test.retString()}");
+print("bool: ${test.retBool()}");
+print("array: ${test.retArray()}");
+print("list: ${test.retList()}");
+print("arb: ${test.retArb()}");
+print("map: ${test.retMap()}");
+print("map.name: ${test.retMap().name}");
+print("colored: ${test.retColor()}");
+
+print("");
+print("=== bare return() returns null ===");
+
+let voidResult = test.retNothing();
+print("void result: ${voidResult}");
+print("void result is null: ${voidResult == null}");
+
+print("");
+print("=== --F delegate to another function ===");
+
+let r1 = test.dispatcher("A");
+print("Dispatcher A returned: ${r1}");
+
+let r2 = test.dispatcher("B");
+print("Dispatcher B returned: ${r2}");
+
+let r3 = test.dispatcher("C");
+print("Dispatcher C returned: ${r3}");
+
+print("");
+print("=== --F with arguments ===");
+
+let r4 = test.delegateWithArgs();
+print("Delegated result: ${r4}");
+
+print("");
+print("=== --F error propagation ===");
+
+let r5 = test.tryDelegate();
+print("Error propagation result: ${r5}");
+
+print("");
+print("=== --F vs plain return(func()) ===");
+
+print("--F result: ${test.viaF()}");
+print("return() result: ${test.viaReturn()}");
+print("Both produce the same result - --F is sugar for return(func())");

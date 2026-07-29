@@ -1,0 +1,12 @@
+// Taking in user input and printing it back
+#meta {
+    name: "UserInput";
+    version: "1.0";
+    author: "ThatOneBit";
+    description: "Taking User Input";
+}
+
+print("This is a test", fg:blue, bg:white, b:dim)
+
+print((input("What you say will be repeated back to you: ")));
+exit

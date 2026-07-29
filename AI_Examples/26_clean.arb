@@ -1,0 +1,70 @@
+#meta {
+    name: "Manual Memory Cleanup";
+    version: "2.0";
+    author: "ArbPlus";
+    description: "Addition 24 - --clean; for manual GC trigger";
+}
+
+--Function util.cleanupTest() {
+    let localVar = "inside function";
+    print("Function local: ${localVar}");
+    --clean;
+    print("Clean inside function");
+    return("done");
+}
+
+print("=== --clean; basic ===");
+
+let temp1 = "hello";
+let temp3 = map{ "a": "1", "b": "2" };
+
+print("Variables created: ${temp1}, ${temp3.a}");
+
+del(temp1);
+del(temp3);
+print("Variables deleted");
+
+--clean;
+print("Cleanup pass complete");
+
+print("");
+print("=== --clean count; ===");
+
+let x1 = 100;
+let x2 = 200;
+let x3 = 300;
+del(x1);
+del(x2);
+del(x3);
+
+--clean count;
+print("Count cleanup done (silent operation)");
+
+print("");
+print("=== --clean stop; / --clean restart; ===");
+
+--clean stop;
+print("Auto collection stopped");
+
+let y1 = "test";
+del(y1);
+
+--clean restart;
+print("Auto collection restarted");
+
+print("");
+print("=== --clean in function scope ===");
+
+let funcResult = util.cleanupTest();
+print("Function returned: ${funcResult}");
+
+print("");
+print("=== Relationship with del() ===");
+
+let big = arb{ 0x02(0x41424344) };
+print("big = ${big}");
+
+del(big);
+--clean;
+print("big deleted and cleanup triggered");
+print("del() removes named var, --clean sweeps unreachable");

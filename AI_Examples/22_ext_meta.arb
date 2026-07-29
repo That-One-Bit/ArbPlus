@@ -1,0 +1,39 @@
+#meta {
+    name: "Extension Metadata";
+    version: "2.0";
+    author: "ArbPlus";
+    description: "Addition 20 - metadata for extensions";
+    dependencies: "ext_example 1.0";
+}
+
+print("=== Loading Extension with Metadata ===");
+
+loadExt("./extensions/ext_example.py", "python");
+
+print("");
+print("=== Querying Extension Metadata ===");
+
+try {
+    let meta = extMeta("ext_example");
+    print("Name: ${meta.name}");
+    print("Version: ${meta.version}");
+    print("Author: ${meta.author}");
+    print("Description: ${meta.description}");
+} catch (err) {
+    print("Caught: ${err}");
+}
+
+print("");
+print("=== Query All Extension Metadata ===");
+
+let allMeta = extMeta();
+print("All metadata: ${allMeta}");
+
+print("");
+print("=== Extension still works normally ===");
+
+loadExt("./extensions/ext_example.py", "python");
+print(ext.sayHello("ArbPlus"));
+
+let resp = ext.fetchUrl("http://example.com");
+print("Response length: ${len(resp)}");

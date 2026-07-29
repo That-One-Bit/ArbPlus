@@ -1,0 +1,33 @@
+// Mid-complexity example: variables, functions, override, inline-if, shell-escape
+#meta {
+    name: "MidExample";
+    version: "1.0";
+    author: "ArbPlus";
+    description: "Variables, functions, override, inline-if, shell-escape";
+    languages: "ArbPlus, batch";
+}
+
+#use batch;
+
+--OV print myprint;
+
+--Function pub.greet(name) {
+    return "Hello, " .. name .. "!";
+}
+
+--Function util.addone(x: int) {
+    return add(x, 1);
+}
+
+let name = "World";
+let result = greet(name);
+myprint(result);
+
+let x = 10;
+let y = addone(x);
+print("x + 1 = " .. toString(y));
+
+let status = (y > 10 ? "big" : "small");
+print("Status: " .. status);
+
+cmd{ echo "Shell says hi" };

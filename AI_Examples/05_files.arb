@@ -1,0 +1,42 @@
+// File handling: file.read, txtRC, file.build, addr, image encoding
+#meta {
+    name: "FileExample";
+    version: "1.0";
+    author: "ArbPlus";
+    description: "File reading, addressing, building";
+}
+
+// Write a test CSV file
+file.write("./testdata.csv", "Name,Age,City\nAlice,30,NYC\nBob,25,LA\nCarol,35,Chicago");
+
+// Verify it exists
+
+if (file.exist("./testdata.csv")) {
+    print("testdata.csv created successfully!");
+}
+
+// Read the file
+let data = file.read("./testdata.csv");
+print("File contents:");
+print(data);
+
+// Row/column access (1-based indexing)
+print("");
+print("Row 2, Col 1: " .. txtRC(2, 1, data));
+print("Row 2, Col 2: " .. txtRC(2, 2, data));
+print("Row 3, Col 3: " .. txtRC(3, 3, data));
+
+// addr.hex example
+let hexval = 0x1A;
+print("");
+print("addr.hex(0x1A) = " .. addr.hex(0x1A));
+print("addr.binary(1024) = " .. addr.binary(1024));
+
+// Build a new file (auto-rename if exists)
+let newpath = file.build("./output.txt", "This file was built by ArbPlus!\nLine 2 here.");
+print("");
+print("Built file at: " .. newpath);
+
+// Read it back
+let verify = file.read("./output.txt");
+print("Verify: " .. verify);

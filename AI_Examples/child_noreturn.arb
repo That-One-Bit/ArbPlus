@@ -1,0 +1,9 @@
+#meta {
+    name: "Child No Return";
+    version: "1.0";
+    author: "ArbPlus";
+    description: "Child script that doesn't return anything";
+}
+
+print("Child got: ${msg}");
+// No return() statement - parent should get null

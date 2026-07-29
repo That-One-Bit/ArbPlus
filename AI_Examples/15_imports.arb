@@ -1,0 +1,10 @@
+// Addition 11: Module/Import system
+#meta { name: "ImportTest"; version: "2.0"; description: "Tests module imports"; }
+
+#import mymods;
+
+print("=== Module Import ===");
+print(mymods.greet("Alice"));
+print("Double 21: " .. toString(mymods.double(21)));
+print("Is 4 even: " .. toString(mymods.isEven(4)));
+print("Is 7 even: " .. toString(mymods.isEven(7)));

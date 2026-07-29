@@ -1,0 +1,15 @@
+// Taking in user input and printing it back
+#meta {
+    name: "UserInput";
+    version: "1.0";
+    author: "ThatOneBit";
+    description: "Taking User Input";
+}
+
+print("Your input will be joined together and repeated back");
+let x = input("Enter the first string: ", fg:cyan);
+
+let y = input("Enter the second string: ", fg:cyan, b:dim);
+
+print(x..y)
+exit

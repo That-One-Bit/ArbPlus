@@ -1,0 +1,16 @@
+// Output in color, with different brightness levels
+#meta {
+    name: "Colored_Output";
+    version: "1.0";
+    author: "ThatOneBit";
+    description: "Output in color, with foreground, background, and brightness";
+}
+
+print("Black on blue", fg:black, bg:blue);
+
+print("Bright Red on White", fg:red, bg:white, b:bright);
+
+print("Bright Red on White, using a different method", fg:bright_red, bg:white);
+
+print("Purple with HEX, "fg:'#3b0099', bg:cyan);
+exit

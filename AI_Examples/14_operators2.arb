@@ -1,0 +1,33 @@
+// Addition 8: Comparison and logical operators
+// Addition 2: Default colors via --OV, open.url/open.app
+#meta { name: "Operators2"; version: "2.0"; description: "Tests additions 2,8"; }
+
+--OV defaults(fg, bg, b) [cyan, black, bright]
+
+print("=== Default Colors Applied ===");
+print("This should be cyan on black, bright");
+print("Override: red", fg: red, b: normal);
+print("Back to defaults");
+
+print("");
+print("=== Comparison Operators ===");
+print("5 == 5: ${5 == 5}");
+print("5 != 3: ${5 != 3}");
+print("5 < 10: ${5 < 10}");
+print("5 <= 5: ${5 <= 5}");
+print("5 > 3: ${5 > 3}");
+print("5 >= 5: ${5 >= 5}");
+
+print("");
+print("=== Logical Operators ===");
+print("true && false: ${true && false}");
+print("true || false: ${true || false}");
+print("not true: ${not true}");
+print("and keyword: ${true and false}");
+print("or keyword: ${true or false}");
+
+print("");
+print("=== Cross-Type Comparison ===");
+print("'42' == 42: ${'42' == 42}");
+print("'5' < '10': ${'5' < '10'}");
+print("5 < 10: ${5 < 10}");

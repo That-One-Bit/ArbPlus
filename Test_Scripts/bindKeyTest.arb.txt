@@ -1,0 +1,5 @@
+bindKey("CTRL+C", "quit")
+
+repeat { print("Press CTRL + C to quit." wait(0, 3, 0)) } until ( not i )
+
+// !Important This script technically works, but doesn't work for the intended reason. Stops due to error.

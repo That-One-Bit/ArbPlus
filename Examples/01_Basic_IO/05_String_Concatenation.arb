@@ -1,0 +1,12 @@
+// Outputs a string with a variable supplied via concatenation
+#meta {
+    name: "String_Concatenation";
+    version: "1.0";
+    author: "ThatOneBit";
+    description: "String concatenation, uses a variable and print arguments.";
+}
+
+let input = input("Enter some text: ");
+
+print("Your text is: " .. input, fg:cyan);
+exit

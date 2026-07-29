@@ -1,0 +1,14 @@
+// ArbPlus module file - provides utility functions
+#meta { name: "mymods"; version: "1.0"; description: "Utility module"; }
+
+--Function util.greet(name) {
+    return "Hello, ${name}! Welcome to ArbPlus.";
+}
+
+--Function util.double(x: int) {
+    return add(x, x);
+}
+
+--Function util.isEven(n: int) {
+    return (mod(n, 2) == 0);
+}

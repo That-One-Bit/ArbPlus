@@ -1,0 +1,79 @@
+#meta {
+    name: "Advanced open.url";
+    version: "2.0";
+    author: "ArbPlus";
+    description: "Additions 18, 19 - file paths, localhost, javascript URIs";
+}
+
+print("=== open.url with web URL (returns handle) ===");
+
+let handle = open.url("https://example.com");
+print("Handle: ${handle}");
+
+print("");
+print("=== open.url with localhost ===");
+
+let h2 = open.url("localhost:3000");
+print("localhost handle: ${h2}");
+
+let h3 = open.url("http://localhost:8080");
+print("http://localhost handle: ${h3}");
+
+let h4 = open.url("127.0.0.1:8000");
+print("127.0.0.1 handle: ${h4}");
+
+print("");
+print("=== open.url with file path ===");
+
+// Create a test HTML file
+writeFile("./test_report.html", "<html><body><h1>Test Report</h1></body></html>");
+
+let h5 = open.url("./test_report.html");
+print("File handle: ${h5}");
+
+// Query page info
+let info = open.page(h5);
+print("Page info - url: ${info.url}");
+print("Page info - type: ${info.type}");
+
+print("");
+print("=== open.url file path error ===");
+
+try {
+    open.url("./nonexistent_file.html");
+} catch (err) {
+    print("Caught: ${err}");
+}
+
+print("");
+print("=== open.url with javascript: URI ===");
+
+// JavaScript URI requires a target handle
+try {
+    open.url("javascript:document.title = 'Modified'", target: handle);
+    print("JavaScript executed on page ${handle}");
+} catch (err) {
+    print("Caught: ${err}");
+}
+
+// JavaScript without target should fail
+try {
+    open.url("javascript:alert('test')");
+} catch (err) {
+    print("Caught (no target): ${err}");
+}
+
+print("");
+print("=== open.page() listing ===");
+
+let allPages = open.page();
+print("All page handles: ${allPages}");
+
+print("");
+print("=== Detection summary ===");
+print("Web URL (https://...): handle ${open.url('https://example.com')}");
+print("localhost:3000: handle ${open.url('localhost:3000')}");
+print("127.0.0.1:8000: handle ${open.url('127.0.0.1:8000')}");
+
+// Cleanup
+dir.del("./test_report.html");

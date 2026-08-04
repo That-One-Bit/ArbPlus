@@ -1,0 +1,96 @@
+#meta { name: "LiveUpdates"; version: "2.0"; description: "Complete DOM update API demo"; }
+
+// ── Handlers for button clicks ──────────────────────────────────
+--Function pub.onGreet(data) {
+    print("[Event] greet: " + data);
+    gui.update("greeting", "Hello, " + data + "!");
+    gui.setStyle("greeting", "color: #4CAF50; font-size: 18px; font-weight: bold;");
+    gui.addClass("greeting", "animated");
+    gui.append("log", "<br>[" + snap.time("second") + "] Greeted: " + data);
+    gui.scroll("log");
+}
+
+--Function pub.onClear(data) {
+    print("[Event] clear");
+    gui.clear("log");
+    gui.setHTML("log", "<b>Log cleared</b>");
+    gui.update("greeting", "Cleared!");
+    gui.setStyle("greeting", "color: #666; font-size: 14px;");
+    gui.removeClass("greeting", "animated");
+    gui.hideEl("thanks");
+    gui.setVal("name", "");
+    gui.focus("name");
+    gui.disable("submit");
+}
+
+--Function pub.onSubmit(data) {
+    let [string] name = data;
+    print("[Event] submit: " + name);
+    gui.update("greeting", "Welcome, " + name + "!");
+    gui.showEl("thanks");
+    gui.setTitle("ArbPlus — " + name);
+    gui.evalJS("document.body.style.background = '#f0f8ff';");
+    gui.append("log", "<br>[" + snap.time("second") + "] Submitted: " + name);
+    gui.enable("submit");
+}
+
+print("=== Complete DOM Update API Demo ===");
+print("");
+
+loadExt("ext_gui_web", "python");
+
+gui.on("greet", "onGreet");
+gui.on("clear", "onClear");
+gui.on("submit", "onSubmit");
+
+// ── Build the page ──────────────────────────────────────────────
+let [string] html = "<h2>Complete DOM Update API</h2>
+<p>Every DOM operation, live — no page restart.</p>
+
+<input id='name' placeholder='Enter your name' style='padding: 5px; margin: 5px 0;'>
+<button id='submit' onclick=\"ARB.call('submit', document.getElementById('name').value)\" disabled>Submit</button>
+<button onclick=\"ARB.call('greet', 'Alice')\">Greet Alice</button>
+<button onclick=\"ARB.call('greet', 'Bob')\">Greet Bob</button>
+<button onclick=\"ARB.call('clear', '')\">Clear Log</button>
+<button onclick=\"document.getElementById('name').value=''; ARB.call('submit',''); gui.enable('submit');\">Enable Submit</button>
+
+<div id='greeting' style='margin-top: 20px; padding: 15px; border: 1px solid #ccc; border-radius: 5px;'>
+  Waiting for a click...
+</div>
+
+<div id='thanks' style='display: none; margin-top: 10px; color: #4CAF50;'>
+  Thanks for your submission!
+</div>
+
+<h3 style='margin-top: 20px;'>Event Log:</h3>
+<div id='log' style='background: #f5f5f5; padding: 10px; border-radius: 5px; max-height: 200px; overflow-y: auto;'>
+  <i>Events will appear here...</i>
+</div>";
+
+let [string] url = gui.open(html, title: "ArbPlus — DOM Updates");
+print("Tab opened: " + url);
+print("");
+
+// ── Push updates from ArbPlus (no button click) ──────────────────
+print("Pushing initial updates from ArbPlus...");
+gui.wait(seconds: 2);
+gui.update("greeting", "This update came from ArbPlus, not a button!");
+gui.setStyle("greeting", "color: #9C27B0; font-size: 16px; background: #F3E5F5;");
+gui.enable("submit");
+gui.setTitle("ArbPlus — Ready");
+
+print("");
+print("Available DOM blocks (27):");
+print("  Content: update, setHTML, append, prepend, clear, replace");
+print("  Style:   setStyle, addClass, removeClass, toggleClass");
+print("  Attr:    setAttr, removeAttr");
+print("  Vis:     showEl, hideEl, remove");
+print("  Insert:  insertBefore, insertAfter, clone");
+print("  Form:    setVal, focus, blur, disable, enable");
+print("  Scroll:  scroll, scrollTop");
+print("  Page:    setTitle, evalJS");
+print("");
+
+gui.wait(seconds: 15);
+gui.close();
+print("=== Demo complete ===");

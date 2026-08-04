@@ -6,7 +6,6 @@
     description: "Taking User Input";
 }
 
-print("This is a test", fg:blue, bg:white, b:dim)
-
+--auto "AUTO_INPUT";
 print((input("What you say will be repeated back to you: ")));
 exit

@@ -1,3 +1,4 @@
+## 00 -- 00_header.py -- header / imports
 #!/usr/bin/env python3
 """
 ArbPlus Language Interpreter
@@ -33,6 +34,8 @@ from enum import Enum
 # DATA TYPE DEFINITIONS
 # =============================================================================
 
+
+## 01 -- 01_values.py -- ArbValue hierarchy + coercion/color helpers
 class ArbValue:
     """Base class for all ArbPlus typed values."""
     def __init__(self, val, type_name):
@@ -398,6 +401,8 @@ def color_name_to_ansi(name, is_bg=False):
 # ERROR TYPES
 # =============================================================================
 
+
+## 02 -- 02_errors.py -- exception classes
 class ArbPlusError(Exception):
     pass
 
@@ -426,6 +431,8 @@ class ExitException(Exception):
 # =============================================================================
 
 #token.marker
+
+## 03 -- 03_lexer.py -- TokenType / Token / Lexer
 class TokenType(Enum):
     INT = "INT"
     FLOAT = "FLOAT"
@@ -583,7 +590,7 @@ class Lexer:
                 self.advance()
                 self.advance()
                 start = self.pos
-                while self.pos < len(self.source) and (self.peek().isalpha() or self.peek() == '.'):
+                while self.pos < len(self.source) and self.peek().isalpha():
                     self.advance()
                 word = self.source[start:self.pos]
                 self.tokens.append(Token(TokenType.DASHDASH, '--' + word, self.line, self.col))
@@ -893,6 +900,8 @@ def _arb_equals(a, b):
 # =============================================================================
 
 @dataclass
+
+## 04 -- 04_ast_nodes.py -- AST node classes
 class MetaNode:
     entries: dict = field(default_factory=dict)
 
@@ -1028,11 +1037,6 @@ class OverrideDefaultsNode:
     defaults: dict = None
 
 @dataclass
-class ErrOVNode:
-    """--ErrOV true; flag — enables warning/error color overrides"""
-    enabled: bool = True
-
-@dataclass
 class TernaryNode:
     cond: Any = None
     then_val: Any = None
@@ -1132,6 +1136,8 @@ class ForwardDeclNode:
 # SECTION 5: PARSER
 # =============================================================================
 
+
+## 05 -- 05_parser.py -- Parser
 class Parser:
     def __init__(self, tokens):
         self.tokens = tokens
@@ -1197,7 +1203,7 @@ class Parser:
         self.skip_newlines()
 
         # Addition 30: --ErrOV flag at top level (before any --OV)
-        while self.peek().type == TokenType.DASHDASH and self.peek().value == '--ErrOV':
+        while self.peek().type == TokenType.DASHDASH and self.peek().value == '--err.ov':
             self.advance()
             # true is tokenized as TokenType.TRUE, not IDENT
             if self.peek().type in (TokenType.IDENT, TokenType.TRUE):
@@ -1371,11 +1377,10 @@ class Parser:
             # Addition 30: --ErrOV true; flag
             if self.peek().type == TokenType.DASHDASH and self.peek().value == '--ErrOV':
                 self.advance()
-                enabled = True
-                if self.peek().type in (TokenType.IDENT, TokenType.TRUE):
+                if self.peek().type == TokenType.IDENT:
                     val = self.advance().value
-                    enabled = val in ('true', True)
-                statements.append(ErrOVNode(enabled=enabled))
+                    if val == 'true':
+                        self.err_ov_enabled = True
                 self.skip_terminators()
                 continue
             if self.peek().type == TokenType.DASHDASH and self.peek().value == '--OV':
@@ -2173,6 +2178,8 @@ class Parser:
 # ENVIRONMENT AND CLIENT
 # =============================================================================
 
+
+## 06 -- 06_environment.py -- Environment
 class Environment:
     def __init__(self, parent=None):
         self.vars = {}
@@ -2235,6 +2242,8 @@ class Environment:
 # ARBPLUS EVALUATOR
 # =============================================================================
 
+
+## 07 -- 07_interp_core.py -- Interpreter core: init/run/execute/eval/call
 class Interpreter:
     def __init__(self, script_path="."):
         if script_path != ".":
@@ -2491,9 +2500,6 @@ class Interpreter:
                     target.val[idx] = value
             else:
                 raise ArbPlusError(f"Cannot assign to index on {target.type_name}")
-
-        elif isinstance(node, ErrOVNode):
-            self.err_ov_enabled = node.enabled
 
         elif isinstance(node, OverrideDefaultsNode):
             for k, v in node.defaults.items():
@@ -2906,6 +2912,8 @@ class Interpreter:
             return e.value if e.value else ArbString("")
         return ArbString("")
 
+
+## 08 -- 08_interp_blocks_and_builtins_a.py -- Interpreter: c/py/shell blocks + collection/math/string builtins
     def execute_c_block(self, node, env):
         compiler = shutil.which("gcc") or shutil.which("cc") or shutil.which("clang")
         if not compiler:
@@ -3623,6 +3631,8 @@ class Interpreter:
             "fromChar": self._b_fromChar,
         }
 
+
+## 09 -- 09_interp_builtins_b.py -- Interpreter: more builtins + builtin dispatch table
     def _b_random(self, args, kwargs, env):
         import random as _random
         if not hasattr(self, '_rng'):
@@ -4060,6 +4070,8 @@ class Interpreter:
     def _b_tobool(self, args, kwargs, env): return ArbBool(arb_truthy(args[0]))
     def _b_typeof(self, args, kwargs, env): return ArbString(args[0].type_name if isinstance(args[0], ArbValue) else "unknown")
 
+
+## 10 -- 10_interp_file_dir_time.py -- Interpreter: file/dir/addr/txtRC/time/locale builtins
     def _b_readfile(self, args, kwargs, env):
         path = self._resolve_path(arb_to_string(args[0]))
         if not os.path.exists(path): raise ArbPlusError(f"File not found: {path}")
@@ -4539,6 +4551,8 @@ class Interpreter:
         if ml == "cs": return self._b_cs([], {}, env)
         raise ArbPlusError(f"Unknown os member: {member}")
 
+
+## 11 -- 11_interp_ext_net.py -- Interpreter: extensions, imports, fetch/dl, meta builtins
     def _b_load_ext(self, args, kwargs, env):
         raw_path = arb_to_string(args[0])
         lang = arb_to_string(args[1]).lower() if len(args) > 1 else "python"
@@ -4947,378 +4961,8 @@ class Interpreter:
 
 
     # ── List operations (Addition 48) ──────────────────────────────
-    def _b_append(self, args, kwargs, env):
-        """append(list, item) — add item to end of list (mutates and returns list)."""
-        if not args:
-            raise ArbPlusError("append() requires a list and an item")
-        lst = args[0]
-        if not isinstance(lst, ArbList):
-            raise ArbPlusError("append() first argument must be a list")
-        for item in args[1:]:
-            lst.val.append(item)
-        return lst
 
-    def _b_prepend(self, args, kwargs, env):
-        """prepend(list, item) — add item to beginning of list (mutates and returns list)."""
-        if not args:
-            raise ArbPlusError("prepend() requires a list and an item")
-        lst = args[0]
-        if not isinstance(lst, ArbList):
-            raise ArbPlusError("prepend() first argument must be a list")
-        for item in reversed(args[1:]):
-            lst.val.insert(0, item)
-        return lst
-
-    def _b_insert(self, args, kwargs, env):
-        """insert(list, index, item) — insert item at index (mutates and returns list)."""
-        if len(args) < 3:
-            raise ArbPlusError("insert() requires a list, index, and item")
-        lst = args[0]
-        if not isinstance(lst, ArbList):
-            raise ArbPlusError("insert() first argument must be a list")
-        idx = int(args[1].py())
-        if idx < 0:
-            idx = max(0, len(lst.val) + idx)
-        lst.val.insert(idx, args[2])
-        return lst
-
-    def _b_removeAt(self, args, kwargs, env):
-        """removeAt(list, index) — remove and return item at index."""
-        if len(args) < 2:
-            raise ArbPlusError("removeAt() requires a list and an index")
-        lst = args[0]
-        if not isinstance(lst, ArbList):
-            raise ArbPlusError("removeAt() first argument must be a list")
-        idx = int(args[1].py())
-        if idx < 0:
-            idx = len(lst.val) + idx
-        if idx < 0 or idx >= len(lst.val):
-            raise ArbPlusError(f"removeAt() index {idx} out of range (0-{len(lst.val)-1})")
-        removed = lst.val.pop(idx)
-        return removed
-
-    def _b_pop(self, args, kwargs, env):
-        """pop(list) — remove and return last item from list."""
-        if not args:
-            raise ArbPlusError("pop() requires a list")
-        lst = args[0]
-        if not isinstance(lst, ArbList):
-            raise ArbPlusError("pop() first argument must be a list")
-        if not lst.val:
-            raise ArbPlusError("pop() list is empty")
-        return lst.val.pop()
-
-    def _b_shift(self, args, kwargs, env):
-        """shift(list) — remove and return first item from list."""
-        if not args:
-            raise ArbPlusError("shift() requires a list")
-        lst = args[0]
-        if not isinstance(lst, ArbList):
-            raise ArbPlusError("shift() first argument must be a list")
-        if not lst.val:
-            raise ArbPlusError("shift() list is empty")
-        return lst.val.pop(0)
-
-    def _b_reverse(self, args, kwargs, env):
-        """reverse(list|string) — reverse a list or string."""
-        if not args:
-            raise ArbPlusError("reverse() requires a list or string")
-        v = args[0]
-        if isinstance(v, ArbList):
-            return ArbList(list(reversed(v.val)))
-        return ArbString(arb_to_string(v)[::-1])
-
-    def _b_sort(self, args, kwargs, env):
-        """sort(list) — return a sorted copy of the list."""
-        if not args:
-            raise ArbPlusError("sort() requires a list")
-        v = args[0]
-        if isinstance(v, ArbList):
-            try:
-                sorted_vals = sorted(v.val, key=lambda x: x.py() if isinstance(x, ArbValue) else x)
-            except TypeError:
-                sorted_vals = sorted(v.val, key=lambda x: arb_to_string(x))
-            return ArbList(sorted_vals)
-        raise ArbPlusError("sort() first argument must be a list")
-
-    def _b_indexOf(self, args, kwargs, env):
-        """indexOf(list|string, item) — return index of first match, or -1."""
-        if len(args) < 2:
-            raise ArbPlusError("indexOf() requires a collection and an item")
-        coll = args[0]
-        target = args[1]
-        if isinstance(coll, ArbList):
-            for i, item in enumerate(coll.val):
-                if _arb_equals(item, target):
-                    return ArbInt(i)
-            return ArbInt(-1)
-        s = arb_to_string(coll)
-        t = arb_to_string(target)
-        idx = s.find(t)
-        return ArbInt(idx)
-
-    def _b_includes(self, args, kwargs, env):
-        """includes(list|string, item) — check if collection contains item."""
-        if len(args) < 2:
-            raise ArbPlusError("includes() requires a collection and an item")
-        coll = args[0]
-        target = args[1]
-        if isinstance(coll, ArbList):
-            for item in coll.val:
-                if _arb_equals(item, target):
-                    return ArbBool(True)
-            return ArbBool(False)
-        return ArbBool(arb_to_string(target) in arb_to_string(coll))
-
-    def _b_slice(self, args, kwargs, env):
-        """slice(list|string, start, end) — return a slice from start to end (exclusive)."""
-        if len(args) < 2:
-            raise ArbPlusError("slice() requires a collection and a start index")
-        coll = args[0]
-        start = int(args[1].py()) if len(args) > 1 else 0
-        end = int(args[2].py()) if len(args) > 2 else None
-        if isinstance(coll, ArbList):
-            return ArbList(coll.val[start:end])
-        s = arb_to_string(coll)
-        return ArbString(s[start:end])
-
-    def _b_flatten(self, args, kwargs, env):
-        """flatten(list) — flatten one level of nesting."""
-        if not args:
-            raise ArbPlusError("flatten() requires a list")
-        lst = args[0]
-        if not isinstance(lst, ArbList):
-            raise ArbPlusError("flatten() first argument must be a list")
-        result = []
-        for item in lst.val:
-            if isinstance(item, ArbList):
-                result.extend(item.val)
-            else:
-                result.append(item)
-        return ArbList(result)
-
-    def _b_range(self, args, kwargs, env):
-        """range(n) or range(start, end, step) — generate a list of integers."""
-        if not args:
-            raise ArbPlusError("range() requires at least one argument")
-        if len(args) == 1:
-            n = int(args[0].py())
-            return ArbList([ArbInt(i) for i in range(max(0, n))])
-        start = int(args[0].py())
-        end = int(args[1].py())
-        step = int(args[2].py()) if len(args) > 2 else 1
-        return ArbList([ArbInt(i) for i in range(start, end, step)])
-
-    def _b_foreach(self, args, kwargs, env):
-        """foreach(list, fn) — call fn(item, index) for each item. fn is a string name."""
-        if len(args) < 2:
-            raise ArbPlusError("foreach() requires a list and a function name")
-        lst = args[0]
-        if not isinstance(lst, ArbList):
-            raise ArbPlusError("foreach() first argument must be a list")
-        fn_name = arb_to_string(args[1])
-        for i, item in enumerate(lst.val):
-            self.call_user_function(fn_name, [item, ArbInt(i)], {}, env)
-        return lst
-
-    # ── Math operations (Addition 48) ───────────────────────────────
-    def _b_abs(self, args, kwargs, env):
-        """abs(n) — absolute value."""
-        if not args:
-            raise ArbPlusError("abs() requires a number")
-        v = args[0].py()
-        if isinstance(v, int):
-            return ArbInt(abs(v))
-        return ArbFloat(abs(float(v)))
-
-    def _b_round(self, args, kwargs, env):
-        """round(n, decimals: 0) — round a number to optional decimal places."""
-        if not args:
-            raise ArbPlusError("round() requires a number")
-        v = float(args[0].py())
-        decimals = int(kwargs.get("decimals", ArbInt(0)).py()) if "decimals" in kwargs else 0
-        if decimals <= 0:
-            return ArbInt(round(v))
-        return ArbFloat(round(v, decimals))
-
-    def _b_floor(self, args, kwargs, env):
-        """floor(n) — round down to nearest integer."""
-        if not args:
-            raise ArbPlusError("floor() requires a number")
-        return ArbInt(int(float(args[0].py()) // 1))
-
-    def _b_ceil(self, args, kwargs, env):
-        """ceil(n) — round up to nearest integer."""
-        if not args:
-            raise ArbPlusError("ceil() requires a number")
-        import math
-        return ArbInt(math.ceil(float(args[0].py())))
-
-    def _b_min(self, args, kwargs, env):
-        """min(a, b, ...) or min(list) — return the minimum value."""
-        if not args:
-            raise ArbPlusError("min() requires at least one argument")
-        if len(args) == 1 and isinstance(args[0], ArbList):
-            vals = [a.py() for a in args[0].val]
-        else:
-            vals = [a.py() for a in args]
-        if not vals:
-            raise ArbPlusError("min() of empty collection")
-        result = min(vals)
-        if isinstance(result, int):
-            return ArbInt(result)
-        return ArbFloat(result)
-
-    def _b_max(self, args, kwargs, env):
-        """max(a, b, ...) or max(list) — return the maximum value."""
-        if not args:
-            raise ArbPlusError("max() requires at least one argument")
-        if len(args) == 1 and isinstance(args[0], ArbList):
-            vals = [a.py() for a in args[0].val]
-        else:
-            vals = [a.py() for a in args]
-        if not vals:
-            raise ArbPlusError("max() of empty collection")
-        result = max(vals)
-        if isinstance(result, int):
-            return ArbInt(result)
-        return ArbFloat(result)
-
-    def _b_sum(self, args, kwargs, env):
-        """sum(list) — sum all numeric elements."""
-        if not args:
-            raise ArbPlusError("sum() requires a list")
-        lst = args[0]
-        if isinstance(lst, ArbList):
-            vals = [a.py() for a in lst.val]
-        else:
-            vals = [lst.py()]
-        if not vals:
-            return ArbInt(0)
-        result = sum(vals)
-        if isinstance(result, int):
-            return ArbInt(result)
-        return ArbFloat(result)
-
-    def _b_clamp(self, args, kwargs, env):
-        """clamp(n, min, max) — constrain n to [min, max] range."""
-        if len(args) < 3:
-            raise ArbPlusError("clamp() requires value, min, and max")
-        v = float(args[0].py())
-        lo = float(args[1].py())
-        hi = float(args[2].py())
-        result = max(lo, min(v, hi))
-        if isinstance(args[0].py(), int):
-            return ArbInt(int(result))
-        return ArbFloat(result)
-
-    # ── String operations (Addition 48) ─────────────────────────────
-    def _b_repeat(self, args, kwargs, env):
-        """repeat(str, n) — repeat string n times."""
-        if len(args) < 2:
-            raise ArbPlusError("repeat() requires a string and a count")
-        s = arb_to_string(args[0])
-        n = int(args[1].py())
-        return ArbString(s * max(0, n))
-
-    def _b_startsWith(self, args, kwargs, env):
-        """startsWith(str, prefix) — check if string starts with prefix."""
-        if len(args) < 2:
-            raise ArbPlusError("startsWith() requires a string and a prefix")
-        return ArbBool(arb_to_string(args[0]).startswith(arb_to_string(args[1])))
-
-    def _b_endsWith(self, args, kwargs, env):
-        """endsWith(str, suffix) — check if string ends with suffix."""
-        if len(args) < 2:
-            raise ArbPlusError("endsWith() requires a string and a suffix")
-        return ArbBool(arb_to_string(args[0]).endswith(arb_to_string(args[1])))
-
-    def _b_capitalize(self, args, kwargs, env):
-        """capitalize(str) — capitalize first letter, lowercase rest."""
-        if not args:
-            raise ArbPlusError("capitalize() requires a string")
-        s = arb_to_string(args[0])
-        return ArbString(s[:1].upper() + s[1:].lower() if s else s)
-
-    def _b_titleCase(self, args, kwargs, env):
-        """titleCase(str) — capitalize first letter of each word."""
-        if not args:
-            raise ArbPlusError("titleCase() requires a string")
-        return ArbString(arb_to_string(args[0]).title())
-
-    def _b_padLeft(self, args, kwargs, env):
-        """padLeft(str, len, char: " ") — pad string on left to given length."""
-        if len(args) < 2:
-            raise ArbPlusError("padLeft() requires a string and a length")
-        s = arb_to_string(args[0])
-        n = int(args[1].py())
-        ch = arb_to_string(args[2]) if len(args) > 2 else " "
-        if len(s) >= n:
-            return ArbString(s)
-        return ArbString(ch[0] * (n - len(s)) + s)
-
-    def _b_padRight(self, args, kwargs, env):
-        """padRight(str, len, char: " ") — pad string on right to given length."""
-        if len(args) < 2:
-            raise ArbPlusError("padRight() requires a string and a length")
-        s = arb_to_string(args[0])
-        n = int(args[1].py())
-        ch = arb_to_string(args[2]) if len(args) > 2 else " "
-        if len(s) >= n:
-            return ArbString(s)
-        return ArbString(s + ch[0] * (n - len(s)))
-
-    def _b_replaceAt(self, args, kwargs, env):
-        """replaceAt(str, index, replacement) — replace character at index with new string."""
-        if len(args) < 3:
-            raise ArbPlusError("replaceAt() requires a string, index, and replacement")
-        s = arb_to_string(args[0])
-        idx = int(args[1].py())
-        repl = arb_to_string(args[2])
-        if idx < 0:
-            idx = len(s) + idx
-        if idx < 0 or idx >= len(s):
-            raise ArbPlusError(f"replaceAt() index {idx} out of range")
-        return ArbString(s[:idx] + repl + s[idx+1:])
-
-    def _b_format(self, args, kwargs, env):
-        """format(template, ...args) — replace {0}, {1}, ... in template with args."""
-        if not args:
-            raise ArbPlusError("format() requires a template string")
-        template = arb_to_string(args[0])
-        rest = args[1:]
-        for i, a in enumerate(rest):
-            template = template.replace("{" + str(i) + "}", arb_to_string(a))
-        return ArbString(template)
-
-    def _b_charCodeAt(self, args, kwargs, env):
-        """charCodeAt(str, index) — return Unicode code point of character at index."""
-        if len(args) < 2:
-            raise ArbPlusError("charCodeAt() requires a string and an index")
-        s = arb_to_string(args[0])
-        idx = int(args[1].py())
-        if idx < 0 or idx >= len(s):
-            raise ArbPlusError(f"charCodeAt() index {idx} out of range")
-        return ArbInt(ord(s[idx]))
-
-    def _b_fromChar(self, args, kwargs, env):
-        """fromChar(code) — convert Unicode code point to a single-character string."""
-        if not args:
-            raise ArbPlusError("fromChar() requires a code point")
-        return ArbString(chr(int(args[0].py())))
-
-    def _resolve_path(self, path):
-        if os.path.isabs(path):
-            return os.path.normpath(path)
-        if path.startswith("./") or path.startswith("../") or path in (".", ".."):
-            return os.path.normpath(os.path.join(self.script_path, path))
-        return os.path.normpath(os.path.join(self.script_path, path))
-
-
-# =============================================================================
-# Entry Point / File Handler
-# =============================================================================
-
+## 12 -- 12_cli.py -- CLI entry point (run_file/main)
 def _extract_auto_mode(argv):
     auto_mode = False
     auto_input_text = ""
@@ -5395,3 +5039,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

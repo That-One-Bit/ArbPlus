@@ -1,0 +1,11 @@
+This is an example program.
+It does not contain functional code.
+
+<motor>fl, leftFrontMotor</motor>
+<motor>fr, rightFrontMotor</motor>
+<motor>bl, leftBackMotor</motor>
+<motor>br, rightBackMotor</motor>
+
+<i sp="0.77" l="var(sec)">leftFrontMotor, rightFrontMotor</i>
+<i sp="0.45" dr"0" l="var(sec)">leftBackMotor</i>
+<i sp="0.45" l="var(rightBackMotor)">rightBackMotor</i>

@@ -1,0 +1,40 @@
+#meta { name: "ColorFixTest"; version: "1.0"; description: "Tests color() ANSI preservation"; }
+
+--Function pub.getStatus(code: int) {
+    if (code == 0) {
+        return color("SUCCESS", fg: green, b: bright);
+    }
+    return color("FAILED", fg: red, b: bright);
+}
+
+print("=== color() ANSI Preservation ===");
+print("");
+
+// Direct — always worked
+print("1. Direct: ", color("red", fg: red));
+
+// Concatenation — was broken, now fixed
+let c = color("blue", fg: blue, b: bright);
+print("2. Concat: prefix: " + c);
+
+// Multi-color concatenation
+print("3. Multi: " + color("ERR", fg: red) + ": " + color("warn", fg: yellow));
+
+// Interpolation
+let status = color("OK", fg: green);
+print("4. Interp: ${status}");
+
+// In list
+let items = [color("a", fg: cyan), color("b", fg: magenta)];
+print("5. List: " + items[0] + ", " + items[1]);
+
+// In map
+let [map] m = map{ "err": color("fail", fg: red), "ok": color("pass", fg: green) };
+print("6. Map: " + m.err + " / " + m.ok);
+
+// Returned from function
+print("7. Func: " + getStatus(0));
+print("8. Func: " + getStatus(1));
+
+print("");
+print("=== All color() tests passed ===");

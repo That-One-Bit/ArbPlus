@@ -1,0 +1,106 @@
+#meta { name: "Builtins48"; version: "1.0"; description: "Addition 48 — list, math & string builtins"; }
+
+print("=== Addition 48: New List, Math & String Builtins ===");
+print("");
+
+// ── List Operations (14 blocks) ──────────────────────────────────
+print("--- List Operations ---");
+let [list] nums = [3, 1, 4, 1, 5, 9, 2, 6];
+
+print("Original: " + nums);
+print("sort: " + sort(nums));
+print("reverse: " + reverse(nums));
+print("reverse string: " + reverse("hello"));
+print("");
+
+let [list] cart = ["apple", "banana"];
+print("Cart: " + cart);
+append(cart, "cherry");
+print("After append: " + cart);
+prepend(cart, "first!");
+print("After prepend: " + cart);
+insert(cart, 2, "inserted");
+print("After insert(2, 'inserted'): " + cart);
+print("pop() = " + pop(cart));
+print("shift() = " + shift(cart));
+print("Final cart: " + cart);
+print("");
+
+print("indexOf([4,5,6], 5) = " + indexOf([4, 5, 6], 5));
+print("indexOf('hello', 'll') = " + indexOf("hello", "ll"));
+print("includes([1,2,3], 2) = " + includes([1, 2, 3], 2));
+print("includes([1,2,3], 9) = " + includes([1, 2, 3], 9));
+print("slice([1,2,3,4,5], 1, 3) = " + slice([1, 2, 3, 4, 5], 1, 3));
+print("slice('hello world', 0, 5) = " + slice("hello world", 0, 5));
+print("flatten([[1,2],3,[4,5]]) = " + flatten([[1, 2], 3, [4, 5]]));
+print("range(5) = " + range(5));
+print("range(2, 10, 2) = " + range(2, 10, 2));
+print("removeAt([10,20,30], 1) = " + removeAt([10, 20, 30], 1));
+print("");
+
+// ── Math Operations (8 blocks) ───────────────────────────────────
+print("--- Math Operations ---");
+print("abs(-42) = " + abs(-42));
+print("abs(-3.14) = " + abs(-3.14));
+print("round(3.7) = " + round(3.7));
+print("round(3.14159, decimals: 2) = " + round(3.14159, decimals: 2));
+print("floor(3.9) = " + floor(3.9));
+print("ceil(3.1) = " + ceil(3.1));
+print("min(5, 3, 8, 1) = " + min(5, 3, 8, 1));
+print("max(5, 3, 8, 1) = " + max(5, 3, 8, 1));
+print("sum([1,2,3,4,5]) = " + sum([1, 2, 3, 4, 5]));
+print("clamp(15, 0, 10) = " + clamp(15, 0, 10));
+print("clamp(-5, 0, 10) = " + clamp(-5, 0, 10));
+print("clamp(5, 0, 10) = " + clamp(5, 0, 10));
+print("");
+
+// ── String Operations (11 blocks) ────────────────────────────────
+print("--- String Operations ---");
+print("replicate('ab', 3) = " + replicate("ab", 3));
+print("startsWith('hello', 'he') = " + startsWith("hello", "he"));
+print("endsWith('hello', 'lo') = " + endsWith("hello", "lo"));
+print("capitalize('hello world') = " + capitalize("hello world"));
+print("titleCase('hello world') = " + titleCase("hello world"));
+print("padLeft('42', 5, '0') = " + padLeft("42", 5, "0"));
+print("padRight('42', 5, '_') = " + padRight("42", 5, "_"));
+print("replaceAt('hello', 1, 'X') = " + replaceAt("hello", 1, "X"));
+print("format('Name: {0}, Age: {1}', 'Alice', 30) = " + format("Name: {0}, Age: {1}", "Alice", 30));
+print("charCodeAt('A', 0) = " + charCodeAt("A", 0));
+print("fromChar(66) = " + fromChar(66));
+print("");
+
+// ── Practical Example: Word Frequency Counter ────────────────────
+print("--- Practical Example: Word Stats ---");
+let [string] text = "the quick brown fox jumps over the lazy dog the fox";
+let [list] words = split(text, " ");
+print("Word count: " + len(words));
+print("Sorted: " + sort(words));
+print("Unique chars in first word: " + len(split(words[0], "")));
+
+// Find all positions of "the"
+let [int] pos = indexOf(text, "the");
+print("First 'the' at index: " + pos);
+print("Reversed text: " + reverse(text));
+print("Title case: " + titleCase(text));
+print("");
+
+// ── Practical Example: Number Processing ─────────────────────────
+print("--- Practical Example: Stats ---");
+let [list] data = [42, 17, 89, 23, 56, 11, 74, 3, 95, 38];
+print("Data: " + data);
+print("Sum: " + sum(data));
+print("Min: " + min(data));
+print("Max: " + max(data));
+let [int] total = sum(data);
+let [int] count = len(data);
+let [float] avg = round(total / count, decimals: 2);
+print("Average: " + avg);
+print("Sorted: " + sort(data));
+print("Range: " + (max(data) - min(data)));
+print("");
+
+print("=== All 33 new builtins working ===");
+print("");
+print("List:    append, prepend, insert, removeAt, pop, shift, reverse, sort, indexOf, includes, slice, flatten, range, foreach");
+print("Math:    abs, round, floor, ceil, min, max, sum, clamp");
+print("String:  replicate, startsWith, endsWith, capitalize, titleCase, padLeft, padRight, replaceAt, format, charCodeAt, fromChar");

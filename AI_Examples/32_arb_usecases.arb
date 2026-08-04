@@ -1,0 +1,99 @@
+// Set-7: Arb Value Type Use Cases — Functions that demonstrate arb containers
+#meta {
+    name: "ArbUseCases";
+    version: "1.0";
+    description: "Functions demonstrating arb value type and its practical use cases";
+    author: "ArbPlus";
+    languages: "Arb";
+}
+
+// Use Case 1: Binary protocol header builder
+--Function pub.buildHeader(msgType: int, payloadSize: int) {
+    let [arb] header = arb{ 0x02(msgType), 0x02(payloadSize), 0x01("ARB+v2") };
+    return header;
+}
+
+// Use Case 2: Tagged data record (mixed types in one container)
+--Function pub.createRecord(name, age: int, score: float, active) {
+    let [arb] record = arb{ 0x01(name), 0x02(age), 0x03(score), 0x04(active) };
+    return record;
+}
+
+print("=== Arb Value Type — Functions and Use Cases ===");
+print("");
+
+// Build a protocol header
+let hdr = buildHeader(1, 256);
+print("Header type: " + typeof(hdr));
+print("  msgType: " + hdr[0]);
+print("  payloadSize: " + hdr[1]);
+print("  magic: " + hdr[2]);
+print("");
+
+// Create a tagged record
+let rec = createRecord("Alice", 30, 95.5, true);
+print("Record:");
+print("  name: " + rec[0] + " (" + typeof(rec[0]) + ")");
+print("  age: " + rec[1] + " (" + typeof(rec[1]) + ")");
+print("  score: " + rec[2] + " (" + typeof(rec[2]) + ")");
+print("  active: " + rec[3] + " (" + typeof(rec[3]) + ")");
+print("");
+
+// Iterate over arb elements
+print("=== Iterating arb ===");
+for (item in rec) {
+    print("  item: " + item);
+}
+print("");
+
+// Arb inside a map
+print("=== Arb inside Map ===");
+let [map] fileData = map{
+    "filename": "test.bin",
+    "size": 1024,
+    "header": arb{ 0x01("MAGIC"), 0x02(42), 0x04(true) },
+    "checksum": arb{ 0x02(9999) }
+};
+
+print("filename: " + fileData.filename);
+print("header[0]: " + fileData.header[0]);
+print("header[1]: " + fileData.header[1]);
+print("header[2]: " + fileData.header[2]);
+print("checksum[0]: " + fileData.checksum[0]);
+print("");
+
+// Arb containing multiple data types for serialization
+print("=== Serialization Container ===");
+let [arb] packet = arb{
+    0x01("command"),
+    0x02(42),
+    0x03(3.14159),
+    0x04(true),
+    0xFF("raw_payload_bytes")
+};
+
+print("packet length: " + len(packet));
+for (i = 0 to len(packet) - 1) {
+    print("  [" + i + "] type=" + typeof(packet[i]) + " value=" + packet[i]);
+}
+print("");
+
+// Nested structure — map of arbs
+print("=== Map of Arbs ===");
+let [map] database = map{
+    "users": arb{ 0x01("alice"), 0x01("bob"), 0x01("charlie") },
+    "ids": arb{ 0x02(101), 0x02(102), 0x02(103) },
+    "active": arb{ 0x04(true), 0x04(false), 0x04(true) }
+};
+
+print("Users: " + database.users[0] + ", " + database.users[1] + ", " + database.users[2]);
+print("IDs: " + database.ids[0] + ", " + database.ids[1] + ", " + database.ids[2]);
+print("Active: " + database.active[0] + ", " + database.active[1] + ", " + database.active[2]);
+print("");
+
+// Image encoding with arb
+print("=== Image Encoding ===");
+print("(encodeImage/decodeImage use arb with image tag 0x10)");
+print("  let img = encodeImage('./photo.png');  // -> arb{ 0x10(base64data) }");
+print("  typeof(img) = arb");
+print("  decodeImage(img, './output.png') writes back to file");

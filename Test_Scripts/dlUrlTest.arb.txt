@@ -1,6 +1,0 @@
-dl.url("https://raw.githubusercontent.com/That-One-Bit/ArbPlus/main/README.md");
-
-let readme = readFile("Readme.md");
-
-print(readme);
-print("The first fifty characters of the file: ${readfile("Readme.md").substring(0, 50)}");

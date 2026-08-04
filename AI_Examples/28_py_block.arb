@@ -15,7 +15,7 @@ py{
 }
 print("x^y from Python:", answer);
 
-print("/n=== py{} with Standard Library ===");
+print("\n=== py{} with Standard Library ===");
 let data = "hello world foo bar baz";
 let word_count = 0;
 py{
@@ -27,7 +27,7 @@ py{
 }
 print("Back in ArbPlus, word_count =", word_count);
 
-print("/n=== py{} JSON Processing ===");
+print("\n=== py{} JSON Processing ===");
 let json_str = '{"name": "ArbPlus", "version": 2.0, "features": [1, 2, 3]}';
 let name_val = "";
 let feature_count = 0;
@@ -41,7 +41,7 @@ py{
 print("Name from JSON:", name_val);
 print("Feature count:", feature_count);
 
-print("/n=== py{} Type Translation ===");
+print("\n=== py{} Type Translation ===");
 let my_list = [1, 2, 3, 4, 5];
 let my_map = map{ "a": 1, "b": 2 };
 let sum_result = 0;
@@ -55,7 +55,7 @@ py{
 }
 print("Sum result:", sum_result);
 
-print("/n=== py{} Stdlib-Only Enforcement ===");
+print("\n=== py{} Stdlib-Only Enforcement ===");
 try {
     py{
         import numpy
@@ -64,7 +64,7 @@ try {
     print("Caught third-party import:", e);
 }
 
-print("/n=== py{} Error Handling ===");
+print("\n=== py{} Error Handling ===");
 try {
     py{
         x = 1 / 0
@@ -73,4 +73,4 @@ try {
     print("Caught Python error:", e);
 }
 
-print("/nAll py{} tests passed!");
+print("\nAll py{} tests passed!");

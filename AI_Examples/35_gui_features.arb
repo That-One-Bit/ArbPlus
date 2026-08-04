@@ -1,0 +1,128 @@
+#meta { name: "GUIFeatures"; version: "2.1"; description: "HTML GUI + tkinter extensions with multi-window support"; }
+
+// ── Handler function (defined early, called later) ──────────────
+--Function pub.onGreet(data) {
+    print("[GUI Event] greet: " + data);
+    gui.send("update", "Hello, " + data + "! Welcome to ArbPlus GUI.");
+}
+
+print("=== ArbPlus GUI Extension System ===");
+print("");
+
+// ── Load extensions (like Python's built-in modules) ─────────────
+print("Loading web GUI extension via loadExt...");
+loadExt("ext_gui_web", "python");
+print("  Registered: gui.open, gui.openUrl, gui.on, gui.send, gui.close,");
+print("    gui.status, gui.wait, gui.create, gui.add, gui.box, gui.text,");
+print("    gui.button, gui.inputField, gui.image, gui.link, gui.list,");
+print("    gui.style, gui.script, gui.html, gui.show");
+print("");
+
+print("Loading tkinter desktop GUI extension via loadExt...");
+loadExt("ext_gui", "python");
+print("  Registered: gui.dialog, gui.input, gui.yesNo, gui.fileOpen,");
+print("    gui.fileSave, gui.colorPicker, gui.password, gui.notify,");
+print("    gui.menu, gui.form");
+print("");
+
+// ── Desktop Dialogs (tkinter) ───────────────────────────────────
+// These open native OS windows (not browser tabs)
+print("=== Desktop Dialogs (tkinter — native OS windows) ===");
+print("Calling gui.dialog() — opens a native window...");
+try {
+    let [string] dlgResult = gui.dialog("Hello from ArbPlus! This is a tkinter dialog.", title: "ArbPlus Dialog");
+    print("  dialog() returned: " + dlgResult);
+} catch (e) {
+    print("  dialog() error: " + e);
+}
+
+print("");
+print("Calling gui.yesNo() — opens a native yes/no window...");
+try {
+    let [string] ynResult = gui.yesNo("Do you want to see the web GUI?", title: "Question");
+    print("  yesNo() returned: " + ynResult);
+} catch (e) {
+    print("  yesNo() error: " + e);
+}
+
+// ── Approach 1: Raw HTML with gui.open() ────────────────────────
+// gui.open() opens a new tab in the default browser
+print("");
+print("=== Approach 1: Raw HTML with gui.open() ===");
+print("gui.open() opens a browser tab with the HTML content.");
+print("Click the Greet button — the handler runs in ArbPlus and");
+print("sends a response back to the tab via Server-Sent Events.");
+
+let [string] html1 = "<h1>Hello from ArbPlus!</h1>
+<p>This tab was opened by a loadExt extension.</p>
+<button onclick=\"ARB.call('greet', 'world')\">Greet</button>
+<div id=\"result\" style=\"margin-top: 20px; padding: 10px; border: 1px solid #ccc;\"></div>
+<script>
+ARB.on('update', function(data) {
+    document.getElementById('result').innerText = data;
+});
+</script>";
+
+// Register handler BEFORE opening the tab so it's ready immediately
+gui.on("greet", "onGreet");
+
+let [string] url1 = gui.open(html1, title: "ArbPlus — Raw HTML");
+print("Browser tab 1 opened at: " + url1);
+print("GUI running: " + gui.status());
+
+// ── Approach 2: Builder API ──────────────────────────────────────
+print("");
+print("=== Approach 2: Builder API ===");
+print("Build HTML with ArbPlus blocks, then gui.show() opens it as a browser tab.");
+
+gui.create("ArbPlus Builder Demo", width: 500, height: 400);
+gui.style("body { font-family: Arial; background: #1a1a2e; color: #eee; padding: 20px; }");
+gui.style("button { background: #0f3460; color: white; border: none; padding: 10px 20px; cursor: pointer; }");
+gui.style("input { padding: 8px; width: 300px; margin: 5px 0; }");
+
+gui.text("ArbPlus GUI Builder", tag: "h1");
+gui.text("Build GUIs with ArbPlus blocks.", tag: "p");
+gui.inputField(placeholder: "Enter your name...", id: "nameInput");
+gui.button("Greet", action: "greet", id: "greetBtn");
+gui.text("Result:", tag: "h3");
+gui.box("Waiting for input...", id: "result", style: "padding: 10px; background: #16213e; border-radius: 5px;");
+
+let [string] html2 = gui.html();
+print("Built HTML length: " + len(html2) + " chars");
+
+let [string] url2 = gui.show();
+print("Browser tab 2 opened at: " + url2);
+
+print("");
+print("=== Both tabs are now open in your browser ===");
+print("Tab 1 (raw HTML):  " + url1);
+print("Tab 2 (builder):   " + url2);
+print("");
+print("Click the 'Greet' button in either tab.");
+print("ArbPlus receives the call, runs onGreet(), and sends");
+print("the result back to the tab via Server-Sent Events.");
+print("");
+print("gui.wait() keeps the server alive so you can interact.");
+
+// ── Keep server alive for user interaction ────────────────────────
+gui.wait(seconds: 15);
+print("");
+print("gui.wait() finished — closing all browser tabs.");
+gui.close();
+print("GUI running: " + gui.status());
+
+print("");
+print("=== GUI demo complete ===");
+print("");
+print("Summary:");
+print("  gui.open()    — opens a browser tab with HTML");
+print("  gui.show()    — opens a browser tab from builder blocks");
+print("  gui.dialog()  — opens a native OS window (tkinter)");
+print("  gui.on()       — register handler for button clicks");
+print("  gui.send()     — push data from ArbPlus to the browser tab");
+print("  gui.wait(sec)  — keep server alive for user interaction");
+print("  gui.close()    — close all browser tabs and stop servers");
+print("");
+print("Loading pattern (like Python built-in modules):");
+print("  loadExt(\"ext_gui_web\", \"python\");  // web-based HTML GUI");
+print("  loadExt(\"ext_gui\", \"python\");      // tkinter desktop dialogs");

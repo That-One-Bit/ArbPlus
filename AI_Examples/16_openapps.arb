@@ -1,17 +1,58 @@
-// Addition 2: open.url and open.app (demonstration - doesn't actually open in sandbox)
-#meta { name: "OpenTest"; version: "2.0"; description: "Tests open.url/open.app"; }
+// Addition 2: open.url and open.app with Android support
+#meta {
+    name: "OpenTest";
+    version: "2.0";
+    description: "Tests open.url/open.app including Android adr support";
+    author: "ArbPlus";
+    languages: "Arb, adb";
+}
 
 print("=== open.url ===");
 let query = "arbplus language";
-print("Would open: https://example.com/search?q=${query}");
+print("Opening: https://example.com/search?q=${query}");
+open.url("https://example.com/search?q=${query}");
 
 print("");
-print("=== open.app ===");
-print("Would open: gimp with file photo.png");
-print("open.app('gimp', args: 'photo.png') launches GIMP with the file");
+print("=== open.app (Desktop) ===");
+print("Launching gimp with file photo.png");
+// open.app("gimp", args: "photo.png");
+
+print("");
+print("=== open.app (Android via adb) ===");
+
+// Launch by package name
+print("Launching Android app by package name:");
+print("  open.app('', adr: 'com.example.myapp')");
+try {
+    open.app("", adr: "com.example.myapp");
+} catch (e) {
+    print("  (No device connected or app not found: " + e + ")");
+}
+
+print("");
+
+// Launch specific activity via full intent string
+print("Launching specific Android activity:");
+print("  open.app('', adr: 'am start -n com.example.myapp/.MainActivity')");
+try {
+    open.app("", adr: "am start -n com.example.myapp/.MainActivity");
+} catch (e) {
+    print("  (No device connected: " + e + ")");
+}
+
+print("");
+
+// With intent extras
+print("Launching with intent extras:");
+print("  open.app('', args: '--es greeting hello', adr: 'com.example.myapp')");
+try {
+    open.app("", args: "--es greeting hello", adr: "com.example.myapp");
+} catch (e) {
+    print("  (No device connected: " + e + ")");
+}
 
 print("");
 print("=== Key Bindings ===");
 bindKey("F1", "showHelp");
 bindKey("Ctrl+C", "exitScript");
-print("Key bindings registered (demonstration only - no event loop in script mode)");
+print("Key bindings registered (standalone mode - installs signal handlers)");

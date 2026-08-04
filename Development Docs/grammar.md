@@ -35,7 +35,7 @@ function_def  ::= "--Function" IDENT "." IDENT "(" [param_list] ")" "{" {stateme
 param_list    ::= param {"," param} ;
 param         ::= IDENT [":" type_name] ;
 
-terminator    ::= ";" | ">" | NEWLINE ;
+terminator    ::= ";" | NEWLINE ;
 ```
 
 ## Comments & Encoding (Step 1)
@@ -130,7 +130,7 @@ primary       ::= INT | FLOAT | STRING | interp_string | "true" | "false"
 // Interpolated string (Addition 1)
 interp_string ::= '" {'${' expression '}' | literal_text} '" ' ;
               // "Hello ${name}!" — undefined variables produce empty string
-              // /n is processed as newline only when displayed via print/input
+              // \n escape produces newline (processed at lexer time)
 
 list_literal  ::= "[" [expression {"," expression}] "]" ;
 
@@ -141,13 +141,11 @@ map_literal   ::= "map{" [map_pair {"," map_pair}] "}" ;   -- Addition 4
 map_pair      ::= (STRING | IDENT) ":" expression ;
 ```
 
-## Newline Token (Addition 5)
+## Newline Escape (Addition 5)
 
 ```ebnf
-// /n is the newline token, recognized inside string literals displayed via print/input
-// //n is the escape sequence to show /n literally
-// Processing: //n → placeholder, /n → \n, placeholder → /n
-// Only applied when text is output via print() or input()
+// \n is the standard newline escape, processed at lexer time in string literals
+// Runtime values (file paths, error messages) are not affected
 ```
 
 ## Text Brightness (Addition 5)
@@ -163,8 +161,7 @@ brightness    ::= "dim" | "normal" | "bright" ;
 
 ```ebnf
 // ; is the primary terminator (C-family convention, matches inline C blocks)
-// > is an alternative (aesthetic choice)
-// Mixing is legal; each statement ends at the first terminator encountered
+// > is strictly a comparison operator (greater-than), NOT a terminator
 // NEWLINE is a soft terminator (statement continues across lines)
 ```
 
@@ -226,7 +223,7 @@ print_stmt    ::= "print" "(" [arg_list] ")" ;
               // kwargs: fg: color, bg: color, b: brightness
               // color: named (red, cyan, ...) or hex (#RRGGBB)
               // brightness: dim, normal, bright (default: normal)
-              // /n in displayed text → newline, //n → literal /n
+              // \n escape → newline (lexer-time)
 
 input_expr    ::= "input" "(" [arg_list] ")" ;
               // kwargs: fg: color, bg: color, b: brightness
@@ -235,13 +232,15 @@ input_expr    ::= "input" "(" [arg_list] ")" ;
 
 ### Color Values
 ```ebnf
-color_value   ::= color_name | hex_color ;
+color_value   ::= color_name | hex_color | rgb_color | oklch_color ;
 color_name    ::= "black" | "red" | "green" | "yellow" | "blue"
               | "magenta" | "cyan" | "white"
               | "bright_black" | "bright_red" | "bright_green"
               | "bright_yellow" | "bright_blue" | "bright_magenta"
               | "bright_cyan" | "bright_white" ;
 hex_color     ::= "#" HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT ;
+rgb_color     ::= "rgb" "(" expression "," expression "," expression ")" ;
+oklch_color   ::= "oklch" "(" expression "," expression "," expression ")" ;
 ```
 
 ### Default Color Override (Addition 7)
@@ -295,23 +294,28 @@ relative_path ::= ("./" | "../" {"/.."} | ) {path_segment} ;
 ## OS Globals (Step 12)
 
 ```ebnf
-// Time
-snap_time     ::= "snap" "." "time" "(" [time_kwargs] ")" ;
-              // One-shot snapshot; kwargs: Year, Month, Day, Hour, Minute, Second, MS
+// Time (presence-based: pass component names to get specific values)
+snap_time     ::= "snap" "." "time" "(" [time_args] ")" ;
+              // One-shot snapshot; returns raw values, not Key=val
+              // snap.time() → full timestamp
+              // snap.time("minute") → "37"
+              // snap.time("hour", "minute") → "14 37"
 
-count_time    ::= "count" "." "time" "(" [time_kwargs] ")" ;
-              // Live sampling; kwargs: Year, Month, Day, Hour, Minute, Second, MS, interval
+count_time    ::= "count" "." "time" "(" [time_args] ")" ;
+              // Live sampling; same presence-based model
+              // Special kwargs: live: true, MS: <interval> for live clock mode
 
-time_kwargs   ::= time_kwarg {"," time_kwarg} ;
-time_kwarg    ::= ("Year" | "Month" | "Day" | "Hour" | "Minute" | "Second" | "MS" | "interval")
-                  ":" expression ;
+time_args     ::= time_component {"," time_component} ;
+time_component ::= STRING | IDENT ;   // "year", "month", "day", "hour", "minute", "second", "millisecond", "ms"
 
 wait_stmt     ::= "wait" "(" [expression {"," expression}] ")" ;
               // Args: minutes, seconds, milliseconds (positional)
 
-// Color Scheme
+// Color Scheme (supports Android night mode via adb)
 cs_call       ::= "cs" "(" ")"           // returns: "light" | "dark"
-              | "cs" "(" expression ")" ; // returns: boolean
+              | "cs" "(" expression ")" ; // returns: boolean (true if matching scheme)
+
+os_cs         ::= "os" "." "CS" "(" [expression] ")" ;  // alias for cs()
 
 // Locale
 locale_prf    ::= "locale" "." "prf" ;    // preferred locale (string)
@@ -319,12 +323,13 @@ locale_cur    ::= "locale" "." "cur" ;   // current locale (string)
 locale_alt    ::= "locale" "." "alt" ;   // alternatives (string)
 locale_check  ::= "locale" "." "check" "(" expression ")" ;  // boolean
 
-// Other globals
-battery       ::= "battery" "(" ")" ;
-network       ::= "network" "(" ")" ;
-screen        ::= "screen" "(" ")" ;
-os_name       ::= "os" "." "name" ;
-os_version    ::= "os" "." "version" ;
+// OS Globals (os.* prefix is canonical; bare names are aliases)
+os_battery   ::= "os" "." "Battery" "(" ")" | "battery" "(" ")" ;
+os_network   ::= "os" "." "Network" "(" ")" | "network" "(" ")" ;
+os_screen    ::= "os" "." "Screen" "(" ")" | "screen" "(" ")" ;
+os_name      ::= "os" "." "Name" "(" ")" | "os" "." "name" ;
+os_version   ::= "os" "." "Version" "(" ")" | "os" "." "version" ;
+              // All support Android via adb when device is connected
 ```
 
 ## New Builtins (Additions 2, 3, 4)
@@ -338,12 +343,14 @@ random_seed   ::= "random" "." "seed" "(" expression ")" ;       // seed the PRN
 // Key Bindings (Addition 2)
 bind_key      ::= "bindKey" "(" expression "," expression ")" ;
               // args: key_combo, function_name
-              // Registers a key binding (for interactive mode, demonstration in script mode)
+              // Works both inside repeat/until loops AND as standalone statement
+              // Standalone: installs signal handlers (CTRL+C, CTRL+Z) or keyboard library hooks
 
 // Open URL/App (Addition 2)
 open_url      ::= "open" "." "url" "(" expression ")" ;     // opens URL in default browser
-open_app      ::= "open" "." "app" "(" expression ["," "args" ":" expression] ")" ;
+open_app      ::= "open" "." "app" "(" expression ["," "args" ":" expression] ["," "adr" ":" expression] ")" ;
               // launches OS application with optional arguments
+              // adr: Android package name or full intent string (requires adb)
 
 // CLI Args (Addition 3)
 args_call     ::= "args" "(" ")" ;            // returns array of CLI args
@@ -435,7 +442,7 @@ primary       ::= INT | FLOAT | STRING | interp_string | "true" | "false"
 | 2 | open.url / open.app / bindKey | `open.url("https://...")`, `open.app("gimp")`, `bindKey("F1","help")` |
 | 3 | Random / CLI args / env | `random()`, `randInt(1,100)`, `random.seed(42)`, `args()`, `env("HOME")` |
 | 4 | Map type | `map{ "k": v }`, `m.key = v`, `keys(m)`, `values(m)`, `has(m,"k")` |
-| 5 | /n newline, text brightness | `print("a/nb")`, `print("x", b: bright)` |
+| 5 | \n newline escape, text brightness | `print("a\\nb")`, `print("x", b: bright)` |
 | 6 | repeat...until | `repeat { ... } until (cond)` |
 | 7 | --OV defaults | `--OV defaults(fg,bg,b) (fg: cyan, bg: black, b: bright)` |
 | 8 | Cross-type comparison | `"42" == 42` → `true`, numeric coercion for `<`, `>` etc. |
@@ -510,3 +517,118 @@ meta_access ::= "meta" "(" [expression] ")"
 ```
 - `meta(key)` → returns the metadata field value
 - `meta()` → returns all metadata as a map (internal `_`-prefixed keys filtered)
+
+### Set-7 Grammar Additions
+
+#### Argument-aware --OV
+```
+override_decl ::= "--OV" ident "(" arg_list? ")" ident
+                | "--OV" ident "<>" ident
+                | "--OV" ident ident
+arg_list      ::= expr ("," expr)*
+```
+- With `(...)`: fixed-argument override (args baked in at declaration time)
+- With `<>`: complete swap of two functions
+- Without `(...)` or `<>`: plain rename (original Step 7 behavior)
+
+#### Cross-category override flags
+```
+ext_ov_flag   ::= "--ext.ov" "true" terminator
+mod_ov_flag   ::= "--mod.ov" "true" terminator
+chd_ov_flag   ::= "--chd.ov" "true" terminator
+```
+Must appear at top of file, before any `--OV` declaration. Each gates only its own category.
+
+#### -w / -e print flags
+```
+flag_arg      ::= "-" "w" | "-" "e"
+print_call    ::= "print" "(" expr ("," (flag_arg | kwarg))* ")"
+```
+- `-w`: use warning color (fg: yellow default)
+- `-e`: use error color (fg: red default)
+- Position-independent within the call arguments
+- Explicit `fg:` kwarg overrides the flag's color
+
+#### for (i < N) loop
+```
+for_loop_lt   ::= "for" "(" ident "<" expr ")" block
+                | "for" "(" ident "<=" expr ")" block
+```
+- `< N`: iterates 0..N-1
+- `<= N`: iterates 0..N inclusive
+- Expr can be integer, variable, or function call
+
+#### Typed variable declaration
+```
+typed_var_decl ::= "let" "[" type_name "]" ident "=" expr terminator
+                 | "const" "[" type_name "]" ident "=" expr terminator
+type_name      ::= "int" | "float" | "string" | "boolean" | "list" | "map" | "arb" | "null"
+```
+- If type is omitted: `let name = expr` — auto-detection from value
+- With type: value is coerced to the specified type
+
+#### open.app adr argument
+```
+open_app_call ::= "open.app" "(" expr ("," "adr:" expr)? ("," "args:" expr)? ")"
+```
+- `adr:` — Android adb command string
+- `args:` — additional arguments passed to the app/adb command
+
+#### openMedia Android resolution
+No grammar change — `openMedia(path)` resolves from Termux home directory on Android automatically.
+
+### Addition 48 — List, Math & String Builtins
+
+#### New block calls (all standard function-call syntax)
+
+```
+// List operations
+list_call    ::= "append" "(" expr ("," expr)+ ")"
+              | "prepend" "(" expr ("," expr)+ ")"
+              | "insert" "(" expr "," expr "," expr ")"
+              | "removeAt" "(" expr "," expr ")"
+              | "pop" "(" expr ")"
+              | "shift" "(" expr ")"
+              | "reverse" "(" expr ")"
+              | "sort" "(" expr ")"
+              | "indexOf" "(" expr "," expr ")"
+              | "includes" "(" expr "," expr ")"
+              | "slice" "(" expr ("," expr)* ")"
+              | "flatten" "(" expr ")"
+              | "range" "(" expr ("," expr ("," expr)?)? ")"
+              | "foreach" "(" expr "," expr ")"
+
+// Math operations
+math_call    ::= "abs" "(" expr ")"
+              | "round" "(" expr ("," "decimals" ":" expr)? ")"
+              | "floor" "(" expr ")"
+              | "ceil" "(" expr ")"
+              | "min" "(" expr ("," expr)* ")"
+              | "max" "(" expr ("," expr)* ")"
+              | "sum" "(" expr ")"
+              | "clamp" "(" expr "," expr "," expr ")"
+
+// String operations
+string_call  ::= "replicate" "(" expr "," expr ")"
+              | "startsWith" "(" expr "," expr ")"
+              | "endsWith" "(" expr "," expr ")"
+              | "capitalize" "(" expr ")"
+              | "titleCase" "(" expr ")"
+              | "padLeft" "(" expr "," expr ("," expr)? ")"
+              | "padRight" "(" expr "," expr ("," expr)? ")"
+              | "replaceAt" "(" expr "," expr "," expr ")"
+              | "format" "(" expr ("," expr)* ")"
+              | "charCodeAt" "(" expr "," expr ")"
+              | "fromChar" "(" expr ")"
+```
+
+#### Notes
+
+- `min()` and `max()` accept either variadic arguments (`min(5, 3, 8)`) or a single list (`min([5, 3, 8])`).
+- `range()` mirrors Python's `range()`: `range(n)` → `[0..n-1]`, `range(start, end, step)` → `[start, start+step, ..., <end]`.
+- `slice()` works on both lists and strings: `slice("hello", 0, 3)` → `"hel"`.
+- `indexOf()` works on both lists and strings: `indexOf("hello", "ll")` → `2`.
+- `includes()` works on both lists and strings: `includes([1,2,3], 2)` → `true`.
+- `foreach()` calls a named user-defined function (string argument) for each `(item, index)` pair.
+- `replicate` is used instead of `repeat` because `repeat` is a keyword for post-test loops.
+- `split()` with empty separator now splits into individual characters.

@@ -1,0 +1,116 @@
+// Set-7: New Features — Argument-aware --OV, <> swap, -w/-e, for (i < N), typed vars
+#meta {
+    name: "Set7Features";
+    version: "1.0";
+    description: "Tests all Set-7 additions";
+    author: "ArbPlus";
+    languages: "Arb";
+}
+
+// User functions must be declared before body
+--Function util.greet(name) {
+    return "Hello, " + name + "!";
+}
+
+--Function pub.sayHi(name) {
+    return "Hi " + name;
+}
+
+--Function pub.sayBye(name) {
+    return "Bye " + name;
+}
+
+print("=== Argument-Aware --OV ===");
+print("");
+
+// --OV with fixed argument: override print to always add \n
+--OV print("\n") newlinePrint;
+newlinePrint("First line");
+newlinePrint("Second line");
+// Original print still works
+print("Original print (no extra newline)");
+
+print("");
+print("=== --OV on User-Defined Function ===");
+
+// Override greet to always pass "World" as the fixed arg
+--OV greet("World") defaultGreet;
+let msg = defaultGreet();
+print("defaultGreet(): " + msg);
+
+// Original still works
+print("greet('Alice'): " + greet("Alice"));
+
+print("");
+print("=== <> Swap Form ===");
+
+// Swap sayHi and sayBye
+--OV sayHi <> sayBye;
+print("After swap:");
+print("  sayHi('Bob'): " + sayHi("Bob"));
+print("  sayBye('Bob'): " + sayBye("Bob"));
+
+print("");
+print("=== -w and -e Flags ===");
+
+print("Warning message", -w);
+print("Error message", -e);
+print("Warning with bg", -w, bg: black);
+print("Error with explicit fg override", -e, fg: blue);
+
+print("");
+print("=== --ErrOV + -e with custom color ===");
+
+--ErrOV true;
+--OV defaults(err_fg) (err_fg: magenta);
+print("Error in magenta", -e);
+--OV defaults(err_fg) (err_fg: red);
+
+print("");
+print("=== for (i < N) Syntax ===");
+
+print("for (i < 5):");
+for (i < 5) {
+    print("  i = " + i);
+}
+
+print("for (i <= 3):");
+for (i <= 3) {
+    print("  i = " + i);
+}
+
+// Using a variable as the bound
+let [int] limit = 4;
+print("for (i < limit) where limit=" + limit + ":");
+for (i < limit) {
+    print("  i = " + i);
+}
+
+// Using randInt as the bound
+let n = randInt(3, 6);
+print("for (i < n) where n=" + n + ":");
+for (i < n) {
+    print("  i = " + i);
+}
+
+print("");
+print("=== let [type] name = value ===");
+
+let [int] x = 42;
+let [float] y = 2.71;
+let [string] s = "typed";
+let [boolean] flag = true;
+let [list] arr = [1, 2, 3];
+let [map] obj = map{ "a": 1, "b": 2 };
+let [arb] data = arb{ 0x01("hello"), 0x02(42) };
+
+print("int: " + x + " (" + typeof(x) + ")");
+print("float: " + y + " (" + typeof(y) + ")");
+print("string: " + s + " (" + typeof(s) + ")");
+print("boolean: " + flag + " (" + typeof(flag) + ")");
+print("list: " + arr + " (" + typeof(arr) + ")");
+print("map: " + obj + " (" + typeof(obj) + ")");
+print("arb[0]: " + data[0] + " (" + typeof(data) + ")");
+
+print("");
+print("=== All Set-7 features verified ===");

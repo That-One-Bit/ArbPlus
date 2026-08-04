@@ -127,7 +127,7 @@ The original function name remains callable. The override creates an alias.
 | File | `readFile(path)`, `fileExists(path)`, `writeFile(path,content,mode:)`, `buildFile(path,content)`, `encodeImage(path)`, `decodeImage(arb,path)`, `openMedia(path)`, `openBrowser(url)` |
 | Addressing | `addr.hex(val)`, `addr.binary(val)`, `addr.meta("marker")`, `txtRC(row,col,data)` |
 | Directory | `dir.list(path[,filter])`, `dir.name(path,newname)`, `dir.make(path,files)`, `dir.del(path)` |
-| OS Globals | `snap.time()`, `count.time()`, `wait(m,s,ms)`, `cs()`, `cs(scheme)`, `locale.prf`, `locale.cur`, `locale.alt`, `locale.check(loc)`, `battery()`, `network()`, `screen()`, `os.name`, `os.version` |
+| OS Globals | `snap.time()`, `count.time()`, `wait(m,s,ms)`, `cs()`/`os.CS()`, `locale.prf`, `locale.cur`, `locale.alt`, `locale.check(loc)`, `os.Battery()`/`battery()`, `os.Network()`/`network()`, `os.Screen()`/`screen()`, `os.Name()`/`os.name`, `os.Version()`/`os.version` |
 | Extensions | `loadExt(path, lang)` |
 
 ---
@@ -292,10 +292,11 @@ print("custom", fg: #FF6600, bg: #1A1A2E);
 
 ### Time
 ```arb
-let ts = snap.time();                              // one-shot: "2026-07-23 12:39:00"
-let detailed = snap.time(Year: 0, Month: 0, Day: 0); // "Year=2026, Month=7, Day=23"
-let now = count.time();                              // live: re-samples on each call
-wait(0, 2, 500);                                      // pause 2.5 seconds
+let ts = snap.time();                        // one-shot: "2026-08-01 14:37:00"
+let minute = snap.time("minute");              // → "37" (presence-based)
+let hm = snap.time("hour", "minute");          // → "14 37"
+let now = count.time();                        // "14:37:00.123"
+wait(0, 2, 500);                                // pause 2.5 seconds
 ```
 
 ### Color Scheme
@@ -315,11 +316,12 @@ locale.check("en_GB")    // boolean: is locale available?
 
 ### Other Globals
 ```arb
-battery()    // "85%"
-network()    // true/false
-screen()     // "1920x1080"
-os.name      // "Linux"
-os.version   // kernel version
+os.Battery()   // 85  (alias: battery())
+os.Network()   // true/false  (alias: network())
+os.Screen()    // "1920x1080"  (alias: screen())
+os.Name()       // "Linux"  (alias: os.name)
+os.Version()    // kernel version  (alias: os.version)
+os.CS()         // "dark"/"light"  (alias: cs())
 ```
 
 ---
@@ -382,7 +384,7 @@ void arbplus_register(ArbEngine* engine) {
 | Unsandboxed variable write paths | Validate paths before writing: check for `..` traversal |
 | Confusing snap.time vs count.time | snap.time = one-shot; count.time = live/re-sampling |
 | Not checking fileExists before readFile | Always check first: `if (fileExists(path)) { readFile(path); }` |
-| `>` terminator vs comparison | Context-dependent: `>` alone = terminator, `>=` = comparison |
+| `>` comparison | Greater-than comparison operator (not a terminator) |
 | Bare identifiers as arguments | Undefined identifiers fall back to string literals (for color names, enums) |
 | Extension returns ArbValue | Return plain Python values; the interpreter wraps them automatically |
 
@@ -478,13 +480,10 @@ if (a or b) { }
 if (a and b or c) { }
 ```
 
-### /n Newline Token & Brightness (Addition 5)
+### Newline Escape & Brightness (Addition 5)
 ```arb
-// /n becomes newline when displayed via print
-print("Line 1/nLine 2/nLine 3");
-
-// //n shows /n literally
-print("Literal //n stays as /n");
+// \n is the newline escape (standard, applied at lexer time)
+print("Line 1\nLine 2\nLine 3");
 
 // Text brightness: dim, normal (default), bright
 print("Dim text", fg: cyan, b: dim);
@@ -625,8 +624,8 @@ bindKey("Ctrl+C", "exitScript");
 | dir make | `dir.make(path, "a.txt;b.txt")` |
 | dir name | `dir.name(path, newname)` |
 | dir del | `dir.del(path)` |
-| snap time | `snap.time(Year: y)` |
-| count time | `count.time(MS: 0)` |
+| snap time | `snap.time("minute")` → `"37"` |
+| count time | `count.time("hour")` → `"14"` |
 | wait | `wait(minutes, seconds, ms)` |
 | color scheme | `cs()` / `cs(dark)` |
 | locale | `locale.prf` / `locale.check("en")` |
@@ -639,7 +638,7 @@ bindKey("Ctrl+C", "exitScript");
 | switch/case | `switch(x) { case "A": { } default: { } }` |
 | try/catch | `try { } catch(e) { } finally { }` |
 | and/or | `if (a and b or c) { }` |
-| /n newline | `print("a/nb")` |
+| \n newline | `print("a\\nb")` |
 | brightness | `print("x", b: bright)` |
 | default colors | `--OV defaults(fg,bg,b) (fg: cyan, b: bright)` |
 | random | `random()`, `randInt(1,100)`, `random.seed(42)` |
@@ -652,7 +651,7 @@ bindKey("Ctrl+C", "exitScript");
 | module import | `#import mymods;` → `mymods.func()` |
 | load extension | `loadExt(path, lang)` |
 | comment | `// single line` / `/* multi line */` |
-| terminator | `;` (primary) or `>` (alternative) |
+| terminator | `;` (primary) or newline |
 
 ### v2.0 Additions 24-27
 
@@ -789,3 +788,526 @@ let timestamp = count.time();
 | 34 | meta.* variables | `meta.name`, `meta.version`, `meta()` | Returns metadata fields, filters internal keys |
 | 35 | Arb naming | Product: ArbPlus, Language: Arb, Extension: .arb | Convention, not a function |
 | 36 | file() type | `let f = file("path.txt"); readFile(f); fileExists(f);` | Returns ArbFile reference with resolved path |
+
+
+## Part 6 Features (Additions 37–42)
+
+### `--OV` Universal Override (Addition 37)
+
+`--OV` works on **every** block, not just `print`. The override automatically covers all forms of a built-in — statement form and inline-assignment form:
+
+```arb
+--OV input myinput;
+
+// Both forms work with the alias:
+myinput("Enter name: ");           // statement form
+let name = myinput("Enter: ");      // inline-assignment form
+
+--OV snap.time mytime;
+let ts = mytime();                   // works
+```
+
+This is a general rule: any `--OV builtinName alias;` alias intercepts the function at the builtins table level, so every call site using the alias invokes the original function regardless of context.
+
+### VS Code Extension (Addition 39)
+
+Install the VS Code extension from `vscode-arbplus/`:
+- Open the folder in VS Code, press F5 to run the extension in debug mode
+- Or install the `.vsix` file: `code --install-extension arbplus-0.1.0.vsix`
+
+Features: syntax highlighting, go-to-definition, hover provider with function docs, semantic token coloring (builtins vs user functions vs extensions).
+
+The TextMate grammar (`syntaxes/arbplus.tmLanguage.json`) covers all 88 blocks, comments, metadata blocks, string interpolation, keywords, color arguments, and `--Function`/`--OV`/`--clean`/`--F` directives. A `color-guide.json` file maps each scope to a recommended color for theme authors.
+
+### Post-Addendum Features
+
+#### `open.app` with Android Support (`adr:`)
+
+```arb
+// Launch Android app by package name
+open.app("", adr: "com.example.myapp");
+
+// Launch specific activity via intent string
+open.app("", adr: "am start -n com.example.myapp/.MainActivity");
+
+// With intent extras
+open.app("", args: "--es greeting hello", adr: "com.example.myapp");
+
+// Error handling with try/catch
+try {
+    open.app("", adr: "com.example.myapp");
+} catch (e) {
+    print("Launch failed: " + e);
+}
+```
+
+- Uses `adb` (Android Debug Bridge) — must be installed and in PATH
+- Checks for connected device via `adb devices`
+- Bare package name → launches default activity
+- Full intent string → passes directly to `adb shell`
+- Device/package errors are catchable `ArbPlusError`s
+
+#### `snap.time()` — Reworked (Presence-Based)
+
+```arb
+snap.time()                        // → "2026-08-01 14:37:00" (full timestamp)
+snap.time("minute")                // → "37"
+snap.time("hour", "minute")         // → "14 37"
+snap.time(minute: true)             // → "37" (kwarg form)
+snap.time("year", "month", "day")   // → "2026 8 1"
+```
+
+No `Key=val` output — returns raw values only. Use `print()` with concatenation for formatted output:
+```arb
+print("Time: " + snap.time("hour") + ":" + snap.time("minute"));
+```
+
+#### `count.time()` — Reworked (Presence-Based)
+
+```arb
+count.time()                    // → "14:37:00.123"
+count.time("minute")             // → "37"
+count.time("hour", "minute")     // → "14 37"
+count.time(live: true, MS: 1000) // live clock (blocks)
+```
+
+#### OS Functions with `os.` Prefix
+
+All OS functions now have canonical `os.` prefixed names. Old bare names still work as aliases.
+
+```arb
+os.Battery()    // battery level (alias: battery())
+os.Screen()     // screen resolution (alias: screen())
+os.Network()   // network status (alias: network())
+os.Name()       // OS name (alias: os.name)
+os.Version()    // OS version (alias: os.version)
+os.CS()         // color scheme (alias: cs())
+```
+
+All functions support Android via `adb` when a device is connected. `os.CS()` / `cs()` properly detects Android night mode.
+
+#### `bindKey()` Outside Loops
+
+```arb
+// Standalone — installs signal handler for CTRL+C
+bindKey("CTRL+C", "quit");
+
+print("Press CTRL+C to quit.");
+while (true) {
+    wait(0, 0, 500);
+}
+```
+
+Works as a standalone statement now. CTRL+C/CTRL+Z install signal handlers; other keys attempt the `keyboard` library if installed.
+
+### Updated Quick-Reference Table
+
+| Feature | Syntax |
+|---------|--------|
+| **Part 6 Additions** | |
+| `--OV` universal | `--OV input myinput;` — overrides all forms (statement + inline) |
+| VS Code extension | `vscode-arbplus/` — `.vsix` install, TextMate grammar + semantic tokens |
+| open.app Android | `open.app("", adr: "com.example.app")` |
+| snap.time reworked | `snap.time("minute")` → `"37"` (presence-based, raw values) |
+| count.time reworked | `count.time("hour")` → `"14"` (presence-based, raw values) |
+| os.* functions | `os.Battery()`, `os.Screen()`, `os.Network()`, `os.Name()`, `os.Version()`, `os.CS()` |
+| bindKey standalone | `bindKey("CTRL+C", "quit")` — works outside repeat/until |
+| TextMate color guide | `vscode-arbplus/syntaxes/color-guide.json` — scope-to-color mapping |
+
+---
+
+## Maps — Extended Guide
+
+### Creating Maps
+
+```arb
+let config = map{ "name": "ArbPlus", "version": 2, "debug": true };
+```
+
+- Keys are string literals (quoted)
+- Values can be any type: `int`, `float`, `string`, `bool`, `list`, `map`, `arb`, `null`
+- Insertion order is preserved
+
+### Accessing Map Values
+
+```arb
+// Dot notation — key must be a valid identifier
+print(config.name);          // → "ArbPlus"
+
+// Bracket notation — works with any key string
+print(config["version"]);   // → 2
+
+// Missing keys return empty string (not an error)
+print(config.nonexistent);  // → ""
+```
+
+### Updating Maps
+
+```arb
+config.newKey = "added";
+config["version"] = 3;
+config.numbers = [1, 2, 3];
+```
+
+### Map Builtins
+
+```arb
+keys(m)          // → list of all keys
+values(m)        // → list of all values
+has(m, "key")   // → true/false
+len(m)            // → number of entries
+```
+
+### Nested Maps
+
+Maps can contain maps as values — chain dot notation to access nested keys:
+
+```arb
+let app = map{
+    "server": map{
+        "host": "localhost",
+        "port": 8080
+    },
+    "auth": map{
+        "user": "admin",
+        "pass": "secret",
+        "roles": map{
+            "admin": true,
+            "readonly": false
+        }
+    }
+};
+
+print(app.server.host);          // → "localhost"
+print(app.server.port);           // → 8080
+print(app.auth.roles.admin);      // → true
+
+// Update nested values
+app.server.port = 3000;
+app.auth.pass = "newpass";
+```
+
+### Maps Containing Arbs
+
+Arb values can be stored as map values and accessed normally:
+
+```arb
+let record = map{
+    "name": "test.dat",
+    "size": 1024,
+    "raw_data": arb{ 0x01("header"), 0x02(42), 0x03(3.14) }
+};
+
+// Access arb elements through the map
+print(record.name);           // → "test.dat"
+print(record.raw_data[0]);    // → "header"
+print(record.raw_data[1]);    // → 42
+print(record.raw_data[2]);    // → 3.14
+print(typeof(record.raw_data)); // → "arb"
+
+// Iterate over arb inside map
+for (item in record.raw_data) {
+    print(item);
+}
+```
+
+### Maps Inside Arbs
+
+Arb containers support only predefined tags (str, int, float, bool, image, raw). Maps stored in arbs are serialized as `raw` (0xFF) with their string representation. For structured nesting, prefer maps-of-maps:
+
+```arb
+// Recommended — nest maps inside maps
+let data = map{
+    "person": map{
+        "name": "Alice",
+        "address": map{ "city": "NYC", "zip": "10001" }
+    }
+};
+
+// Arb is for binary/tagged data, not structured nesting
+let binary = arb{ 0x01("meta"), 0xFF("raw bytes") };
+```
+
+### Iterating Maps
+
+```arb
+let m = map{ "a": 1, "b": 2, "c": 3 };
+
+// Iterate keys
+for (k in keys(m)) {
+    print(k, "=", m[k]);
+}
+
+// Iterate values
+for (v in values(m)) {
+    print(v);
+}
+```
+
+---
+
+## Arbs — Extended Guide
+
+### Arb Sub-Type Tags
+
+| Tag | Hex | Type |
+|-----|-----|------|
+| str | 0x01 | String (UTF-8) |
+| int | 0x02 | 64-bit integer |
+| float | 0x03 | Double-precision float |
+| bool | 0x04 | Boolean |
+| image | 0x10 | Base64 image |
+| raw | 0xFF | Raw bytes |
+
+### Creating Arbs
+
+```arb
+let data = arb{ 0x01("hello"), 0x02(42), 0x03(3.14), 0x04(true) };
+let empty = arb{};
+let withRaw = arb{ 0x01("label"), 0xFF("raw data") };
+```
+
+### Accessing Arb Elements
+
+```arb
+data[0]      // → "hello" (decoded to string)
+data[1]      // → 42 (decoded to int)
+data[2]      // → 3.14 (decoded to float)
+data[3]      // → true (decoded to bool)
+
+len(data)    // → 4
+typeof(data) // → "arb"
+typeof(data[0]) // → "string"
+typeof(data[1]) // → "int"
+```
+
+### Iterating Arbs
+
+```arb
+for (item in data) {
+    print(item);
+}
+// hello, 42, 3.14, true
+```
+
+### Image Encoding with Arbs
+
+```arb
+let img = encodeImage("./photo.png");  // → arb{ 0x10(base64data) }
+decodeImage(img, "./output.png");       // → writes decoded image
+```
+
+### Arbs Inside Maps
+
+```arb
+let container = map{
+    "name": "binary_data",
+    "payload": arb{ 0x01("magic"), 0x02(256), 0x04(false) }
+};
+
+print(container.payload[0]);    // → "magic"
+print(container.payload[1]);    // → 256
+print(container.payload[2]);    // → false
+```
+
+### Arbs Inside Arbs
+
+Arb containers can nest by encoding one arb as a `raw` element in another. The inner arb is stored as raw bytes:
+
+```arb
+let inner = arb{ 0x01("inside"), 0x02(99) };
+let outer = arb{ 0x01("wrapper"), 0xFF(inner) };
+
+// outer[0] → "wrapper" (decoded string)
+// outer[1] → raw representation of inner arb
+```
+
+Note: nested arb elements aren't individually indexable through the outer container. For structured nesting with direct access, use maps or lists to hold multiple arb containers.
+
+## Set-7 Features (Additions 43-47)
+
+### Argument-Aware `--OV` Overrides
+
+`--OV` can now supply fixed arguments as part of the override:
+
+```arb
+// Fixed arg: always calls print with "\n"
+--OV print("\n") newlinePrint;
+newlinePrint("First line");    // → "\nFirst line"
+
+// Plain rename (no args) — same as before
+--OV print myPrint;
+```
+
+Works identically on user-defined functions:
+
+```arb
+--Function util.greet(name) { return "Hello, " + name + "!"; }
+--OV greet("World") defaultGreet;
+print(defaultGreet());         // → "Hello, World!"
+```
+
+### `<>` Swap Form
+
+Completely exchange two functions:
+
+```arb
+--OV print <> input;
+// Every call to print now runs input, and vice versa
+// Reversible with another --OV print <> input;
+```
+
+### Cross-Category Override Flags
+
+| Flag | Unlocks |
+|------|---------|
+| `--ext.ov true;` | Extension functions |
+| `--mod.ov true;` | Module functions |
+| `--chd.ov true;` | Child script functions |
+
+Must appear at top of file before any `--OV`. Without the flag, a cross-category override raises a catchable error.
+
+### `-w`/`-e` Styled Output Flags
+
+```arb
+print("Warning!", -w);              // yellow (warning color)
+print("Error!", -e);                 // red (error color)
+print("Warning", -w, bg: black);    // with background — order doesn't matter
+print("Custom", -e, fg: blue);       // explicit fg overrides -e color
+```
+
+With `--ErrOV` to change error color:
+
+```arb
+--ErrOV true;
+--OV defaults(err_fg) (err_fg: magenta);
+print("Magenta error", -e);          // renders in magenta
+```
+
+### `for (i < N)` Loop Syntax
+
+```arb
+for (i < 5) { print(i); }        // 0..4
+for (i <= 3) { print(i); }       // 0..3
+let limit = 4;
+for (i < limit) { print(i); }   // 0..3
+let n = randInt(3, 6);
+for (i < n) { print(i); }        // 0..n-1 (random bound)
+```
+
+### `let [type] name = value` — Typed Declarations
+
+```arb
+let [int] x = 42;
+let [float] y = 3.14;
+let [string] s = "hello";
+let [boolean] flag = true;
+let [list] arr = [1, 2, 3];
+let [map] obj = map{ "a": 1, "b": 2 };
+let [arb] data = arb{ 0x01("test"), 0x02(42) };
+let [null] nothing = null;
+
+// Auto-detection still works when type is omitted
+let auto = 42;        // → ArbInt
+
+// Type coercion
+let [int] coerced = "42";    // string → int 42
+let [float] f = 10;          // int → float 10.0
+
+// With const
+const [int] MAX = 100;
+```
+
+### `openMedia()` on Android
+
+On Android/Termux, `openMedia()` resolves files from the Termux home directory (`/data/data/com.termux/files/home/`) instead of the script directory. No syntax change needed — automatic based on runtime environment.
+
+### `open.app()` Android `adr` Support
+
+```arb
+// Launch by package name
+open.app("", adr: "com.example.myapp");
+
+// Launch specific activity
+open.app("", adr: "am start -n com.example.myapp/.MainActivity");
+
+// With additional args
+open.app("", args: "--es greeting hello", adr: "com.example.myapp");
+```
+
+---
+
+## Addition 48 — List, Math & String Builtins
+
+33 new built-in blocks for common list, math, and string operations.
+
+### List Operations
+
+```arb
+let [list] nums = [3, 1, 4, 1, 5, 9, 2, 6];
+
+// Mutation (returns the modified list)
+append(nums, 7);            // [3, 1, 4, 1, 5, 9, 2, 6, 7]
+prepend(nums, 0);           // [0, 3, 1, 4, 1, 5, 9, 2, 6, 7]
+insert(nums, 2, 99);        // insert 99 at index 2
+print(pop(nums));           // 7 (removes last)
+print(shift(nums));         // 0 (removes first)
+print(removeAt(nums, 1));   // removes and returns item at index 1
+
+// Non-mutating (returns new value)
+print(sort(nums));          // sorted copy
+print(reverse(nums));       // reversed copy
+print(reverse("hello"));    // olleh (works on strings too)
+print(slice(nums, 0, 3));   // first 3 elements
+print(flatten([[1,2], 3, [4,5]]));  // [1, 2, 3, 4, 5]
+print(range(5));            // [0, 1, 2, 3, 4]
+print(range(2, 10, 2));     // [2, 4, 6, 8]
+
+// Search
+print(indexOf(nums, 5));    // 4 (or -1 if not found)
+print(includes(nums, 42));  // false
+
+// Iteration
+--Function pub.process(item, idx) {
+    print("[${idx}] ${item}");
+}
+foreach(nums, "process");
+```
+
+### Math Operations
+
+```arb
+print(abs(-42));            // 42
+print(abs(-3.14));           // 3.14
+print(round(3.7));           // 4
+print(round(3.14159, decimals: 2));  // 3.14
+print(floor(3.9));           // 3
+print(ceil(3.1));            // 4
+print(min(5, 3, 8, 1));     // 1
+print(max([5, 3, 8, 1]));    // 8
+print(sum([1, 2, 3, 4, 5])); // 15
+print(clamp(15, 0, 10));    // 10
+print(clamp(-5, 0, 10));    // 0
+print(clamp(5, 0, 10));     // 5
+```
+
+### String Operations
+
+```arb
+print(replicate("ab", 3));           // ababab
+print(startsWith("hello", "he"));     // true
+print(endsWith("hello", "lo"));       // true
+print(capitalize("hello world"));     // Hello world
+print(titleCase("hello world"));      // Hello World
+print(padLeft("42", 5, "0"));         // 00042
+print(padRight("42", 5, "_"));        // 42___
+print(replaceAt("hello", 1, "X"));    // hXllo
+print(format("Hi {0}, age {1}", "Bob", 30));  // Hi Bob, age 30
+print(charCodeAt("A", 0));             // 65
+print(fromChar(66));                   // B
+
+// split() now supports empty separator (splits into characters)
+print(split("hello", ""));             // [h, e, l, l, o]
+```
+
+> **Note:** The string repeat function is `replicate`, not `repeat` — `repeat` is a keyword reserved for `repeat { } until (cond)` loops.

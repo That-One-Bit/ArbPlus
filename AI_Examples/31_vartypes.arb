@@ -1,0 +1,89 @@
+// Set-7: Variable Types — Demonstrates let [type] name = value for every type
+#meta {
+    name: "VarTypes";
+    version: "1.0";
+    description: "Demonstrates typed variable declarations for all ArbPlus types";
+    author: "ArbPlus";
+    languages: "Arb";
+}
+
+print("=== Typed Variable Declarations ===");
+print("");
+
+// int — 64-bit integer
+let [int] myInt = 42;
+print("int: " + myInt + " (type: " + typeof(myInt) + ")");
+
+// float — double-precision float
+let [float] myFloat = 3.14;
+print("float: " + myFloat + " (type: " + typeof(myFloat) + ")");
+
+// string — UTF-8 text
+let [string] myStr = "hello world";
+print("string: " + myStr + " (type: " + typeof(myStr) + ")");
+
+// boolean — true/false
+let [boolean] myBool = true;
+print("boolean: " + myBool + " (type: " + typeof(myBool) + ")");
+
+// list — dynamic heterogeneous array
+let [list] myList = [1, "two", 3.0, true];
+print("list: " + myList + " (type: " + typeof(myList) + ")");
+print("  len: " + len(myList));
+print("  [0]: " + myList[0]);
+print("  [1]: " + myList[1]);
+
+// map — key-value store
+let [map] myMap = map{ "name": "ArbPlus", "version": 2 };
+print("map: " + myMap + " (type: " + typeof(myMap) + ")");
+print("  name: " + myMap.name);
+print("  version: " + myMap["version"]);
+
+// arb — tagged hex container
+let [arb] myArb = arb{ 0x01("data"), 0x02(99), 0x03(2.71), 0x04(false) };
+print("arb: (type: " + typeof(myArb) + ")");
+print("  [0]: " + myArb[0] + " (type: " + typeof(myArb[0]) + ")");
+print("  [1]: " + myArb[1] + " (type: " + typeof(myArb[1]) + ")");
+print("  [2]: " + myArb[2] + " (type: " + typeof(myArb[2]) + ")");
+print("  [3]: " + myArb[3] + " (type: " + typeof(myArb[3]) + ")");
+
+// null — explicitly typed as null
+let [null] myNull = null;
+print("null: " + myNull + " (type: " + typeof(myNull) + ")");
+
+print("");
+print("=== Auto-Detection (no type hint) ===");
+
+// When type is omitted, auto-detection from value works as before
+let autoInt = 100;
+let autoStr = "auto";
+let autoList = [1, 2, 3];
+let autoMap = map{ "key": "val" };
+let autoArb = arb{ 0x01("auto") };
+
+print("auto int: " + autoInt + " (" + typeof(autoInt) + ")");
+print("auto string: " + autoStr + " (" + typeof(autoStr) + ")");
+print("auto list: " + autoList + " (" + typeof(autoList) + ")");
+print("auto map: " + autoMap + " (" + typeof(autoMap) + ")");
+print("auto arb: " + autoArb[0] + " (" + typeof(autoArb) + ")");
+
+print("");
+print("=== Type Coercion ===");
+
+// Coerce string to int
+let [int] coerced = "42";
+print("coerced string->int: " + coerced + " (" + typeof(coerced) + ")");
+
+// Coerce int to float
+let [float] coercedF = 10;
+print("coerced int->float: " + coercedF + " (" + typeof(coercedF) + ")");
+
+// Coerce int to string
+let [string] coercedS = 123;
+print("coerced int->string: " + coercedS + " (" + typeof(coercedS) + ")");
+
+print("");
+print("=== const with type ===");
+
+const [int] MAX = 100;
+print("const int: " + MAX + " (" + typeof(MAX) + ")");

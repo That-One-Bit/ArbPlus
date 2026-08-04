@@ -11,7 +11,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 INTERPRETER="python3 interpreter.py"
-EXAMPLES_DIR="examples"
+EXAMPLES_DIR="Examples"
 PASSED=0
 FAILED=0
 SKIPPED=0
@@ -40,30 +40,27 @@ should_skip() {
     return 1
 }
 
-# Determine which files to run
+if [[ ! -d "$EXAMPLES_DIR" ]]; then
+    echo -e "${RED}Examples directory not found: ${EXAMPLES_DIR}${NC}"
+    exit 1
+fi
+
+# Determine which files to run recursively
 if [[ $# -ge 1 ]]; then
-    # Specific examples requested (by number)
     FILES=()
     for num in "$@"; do
-        # Try to find file matching the number (01, 1, etc.)
-        found=$(ls "$EXAMPLES_DIR"/[0-9]*"$num"*.arb 2>/dev/null || true)
-        if [[ -n "$found" ]]; then
-            FILES+=($found)
-        fi
-    done
-    if [[ ${#FILES[@]} -eq 0 ]]; then
-        # Fallback: try direct pattern
-        for f in "$EXAMPLES_DIR"/*.arb; do
+        while IFS= read -r f; do
+            FILES+=("$f")
+        done < <(find "$EXAMPLES_DIR" -type f -name '*.arb' | sort | while IFS= read -r f; do
             base=$(basename "$f" .arb)
-            for num in "$@"; do
-                [[ "$base" == *"$num"* ]] && FILES+=("$f")
-            done
-        done
-    fi
+            if [[ "$base" == *"$num"* ]]; then
+                printf '%s\n' "$f"
+            fi
+        done)
+    done
     FILES=($(printf '%s\n' "${FILES[@]}" | sort -u))
 else
-    # Run all .arb files in sorted order
-    FILES=($(ls "$EXAMPLES_DIR"/*.arb | sort))
+    mapfile -t FILES < <(find "$EXAMPLES_DIR" -type f -name '*.arb' | sort)
 fi
 
 TOTAL=${#FILES[@]}
@@ -80,31 +77,29 @@ echo ""
 
 for f in "${FILES[@]}"; do
     fname=$(basename "$f")
-    
+
     if should_skip "$fname"; then
         echo -e "  ${YELLOW}SKIP${NC}  $fname  (requires parent args, tested via 24_run_arb.arb)"
         ((SKIPPED=$((SKIPPED + 1))))
         continue
     fi
-    
-    # Extract example number for display
+
     num=""
     if [[ "$fname" =~ ^([0-9]+)_ ]]; then
         num="${BASH_REMATCH[1]}"
     fi
-    
+
     label="$fname"
     [[ -n "$num" ]] && label="Example $num: $fname"
-    
-    # Run the interpreter, capture output
-    output=$($INTERPRETER "$f" 2>&1) || true
-    
-    # Check for failure indicators
-    if echo "$output" | grep -qiE '^Traceback|^ArbPlus Error|^Error:|^Parse error' && \
-       ! echo "$output" | grep -q "All Part.*tests passed"; then
+
+    set +e
+    output=$("$INTERPRETER" "$f" 2>&1)
+    status=$?
+    set -e
+
+    if [[ $status -ne 0 ]]; then
         echo -e "  ${RED}FAIL${NC}  $label"
-        # Show first error line
-        first_error=$(echo "$output" | grep -m1 -E '^Traceback|^ArbPlus Error|^Error:|^Parse error')
+        first_error=$(printf '%s\n' "$output" | grep -m1 -E '^Traceback|^ArbPlus Error|^Error:|^Parse error' || true)
         [[ -n "$first_error" ]] && echo -e "        → $first_error"
         ((FAILED=$((FAILED + 1))))
         FAILED_LIST+=("$fname")

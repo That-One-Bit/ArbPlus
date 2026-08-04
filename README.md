@@ -14,6 +14,12 @@ python3 interpreter.py examples/13_datatypes2.arb arg1 arg2 arg3
 # Run all examples
 ./run_examples.sh            # Linux/macOS
 powershell -ExecutionPolicy Bypass -File run_examples.ps1  # Windows
+
+# Double-click .arb files to run them (one-time setup):
+#   Windows:  powershell -ExecutionPolicy Bypass -File install_arb_assoc.ps1
+#   Linux:     ./install_arb_assoc.sh
+#   Then double-click any .arb file in the file explorer to run it.
+#   Right-click → "Edit with VS Code" to open in the editor.
 ```
 
 ## What's Here
@@ -23,6 +29,10 @@ arbplus/
 ├── interpreter.py          ← The full interpreter (lexer, parser, evaluator, builtins)
 ├── run_examples.sh         ← Test runner (Linux/macOS)
 ├── run_examples.ps1        ← Test runner (Windows PowerShell)
+├── run_arb.sh              ← Single-script runner (Linux/macOS)
+├── install_arb_assoc.sh    ← File association installer (Linux)
+├── install_arb_assoc.ps1   ← File association installer (Windows)
+├── uninstall_arb_assoc.ps1 ← File association uninstaller (Windows)
 ├── examples/               ← Example .arb scripts (30 files)
 │   ├── 01-08               ← v1.0 core features
 │   ├── 09-23               ← v2.0 additions 1-23
@@ -67,7 +77,7 @@ arbplus/
 - **switch/case/default**: Multi-branch with colon-delimited cases
 - **try/catch/finally**: Error handling with catch variable and guaranteed cleanup
 - **and/or keywords**: `if (a and b or c)` alongside `&&` / `||` operators
-- **/n newline token**: `print("Line 1/nLine 2")` — `//n` escapes to literal `/n`
+- **\n newline escape**: `print("Line 1\nLine 2")` — standard escape, processed at lexer time
 - **Text brightness**: `print("text", b: bright)` — dim, normal, bright ANSI levels
 - **Default color override**: `--OV defaults(fg,bg,b) (fg: cyan, bg: black, b: bright)`
 - **Cross-type comparison**: `"42" == 42` → `true`, numeric coercion for `<`, `>`, etc.
@@ -91,6 +101,42 @@ arbplus/
 - **Forward declaration**: `let [name];` declares a variable as `null` for later assignment
 - **var()**: `var("name")` — unquoted variable references where strings are expected
 - **count.time live**: `count.time(live: true, MS: 1000)` — live updating clock mode
+
+
+
+## Addition 48 — List, Math & String Builtins
+
+33 new built-in blocks for common operations found in Python, JavaScript, and Ruby.
+
+**List Operations (14):** `append`, `prepend`, `insert`, `removeAt`, `pop`, `shift`, `reverse`, `sort`, `indexOf`, `includes`, `slice`, `flatten`, `range`, `foreach`
+
+**Math Operations (8):** `abs`, `round`, `floor`, `ceil`, `min`, `max`, `sum`, `clamp`
+
+**String Operations (11):** `replicate`, `startsWith`, `endsWith`, `capitalize`, `titleCase`, `padLeft`, `padRight`, `replaceAt`, `format`, `charCodeAt`, `fromChar`
+
+```arb
+let [list] nums = [3, 1, 4, 1, 5, 9, 2, 6];
+print(sort(nums));               // [1, 1, 2, 3, 4, 5, 6, 9]
+print(sum(nums));                 // 31
+print(min(nums));                 // 1
+print(max(nums));                 // 9
+print(clamp(15, 0, 10));         // 10
+print(slice(nums, 0, 3));        // [3, 1, 4]
+print(reverse("hello"));         // olleh
+print(replicate("ab", 3));        // ababab
+print(format("Hi {0}, age {1}", "Bob", 30));  // Hi Bob, age 30
+print(capitalize("hello world")); // Hello world
+print(padLeft("42", 5, "0"));     // 00042
+```
+
+> **86 total built-in blocks** across all categories.
+
+
+## GUI System (Built-in Extensions)
+
+ArbPlus GUI blocks are built-in extensions loaded via `loadExt()`. See the dedicated docs:
+- [docs/ext_gui_web.md](docs/ext_gui_web.md) — Web-based HTML GUI (19 blocks)
+- [docs/ext_gui.md](docs/ext_gui.md) — Desktop dialogs via tkinter (10 blocks)
 
 ### Example Files (30 total)
 | # | File | Demonstrates |
@@ -119,3 +165,58 @@ The interpreter is a single Python file with no external dependencies (Python 3.
 - **meta.* variables** — `meta.name`, `meta.version`, `meta()` for metadata access
 - **Arb naming** — Product: ArbPlus, Language: Arb, Extension: .arb
 - **file() type** — `file("path")` creates ArbFile reference for file operations
+
+## Set-7 Additions (43-47)
+
+- **Argument-aware `--OV`** — `--OV print("\n") newlinePrint;` bakes fixed arguments into the override; also works on user-defined functions
+- **`<>` swap form** — `--OV print <> input;` completely exchanges two functions (reversible)
+- **Cross-category override flags** — `--ext.ov true;`, `--mod.ov true;`, `--chd.ov true;` gate extension/module/child-script overrides
+- **`-w`/`-e` print flags** — `print("text", -w)` uses warning color (yellow), `print("text", -e)` uses error color (red); position-independent, `--ErrOV` color changes are reflected
+- **`for (i < N)` loop** — `for (i < 5) { ... }` as shorthand for `for (i = 0 to 4) { ... }`; supports `<=`, variables, and random bounds
+- **Typed variable declarations** — `let [int] x = 42;` with type coercion; supports `int`, `float`, `string`, `boolean`, `list`, `map`, `arb`, `null`; auto-detection when type omitted
+- **`openMedia()` Android/Termux** — resolves files from Termux data directory on Android
+- **`open.app()` Android `adr:`** — launches apps via `adb` with `adr:` keyword argument
+
+
+
+## Addition 48 — List, Math & String Builtins
+
+33 new built-in blocks for common operations found in Python, JavaScript, and Ruby.
+
+**List Operations (14):** `append`, `prepend`, `insert`, `removeAt`, `pop`, `shift`, `reverse`, `sort`, `indexOf`, `includes`, `slice`, `flatten`, `range`, `foreach`
+
+**Math Operations (8):** `abs`, `round`, `floor`, `ceil`, `min`, `max`, `sum`, `clamp`
+
+**String Operations (11):** `replicate`, `startsWith`, `endsWith`, `capitalize`, `titleCase`, `padLeft`, `padRight`, `replaceAt`, `format`, `charCodeAt`, `fromChar`
+
+```arb
+let [list] nums = [3, 1, 4, 1, 5, 9, 2, 6];
+print(sort(nums));               // [1, 1, 2, 3, 4, 5, 6, 9]
+print(sum(nums));                 // 31
+print(min(nums));                 // 1
+print(max(nums));                 // 9
+print(clamp(15, 0, 10));         // 10
+print(slice(nums, 0, 3));        // [3, 1, 4]
+print(reverse("hello"));         // olleh
+print(replicate("ab", 3));        // ababab
+print(format("Hi {0}, age {1}", "Bob", 30));  // Hi Bob, age 30
+print(capitalize("hello world")); // Hello world
+print(padLeft("42", 5, "0"));     // 00042
+```
+
+> **86 total built-in blocks** across all categories.
+
+
+## GUI System (Built-in Extensions)
+
+ArbPlus GUI blocks are built-in extensions loaded via `loadExt()`. See the dedicated docs:
+- [docs/ext_gui_web.md](docs/ext_gui_web.md) — Web-based HTML GUI (19 blocks)
+- [docs/ext_gui.md](docs/ext_gui.md) — Desktop dialogs via tkinter (10 blocks)
+
+### Example Files (41 total)
+| # | File | Demonstrates |
+|---|------|-------------|
+| 34 | `34_color_fix.arb` | color() ANSI preservation through concatenation, interpolation, lists, maps, function returns |
+| 35 | `35_gui_features.arb` | Built-in HTML GUI: gui.open(), builder API, event handling, bidirectional communication |
+| 36 | `36_live_updates.arb` | Live DOM updates via SSE: gui.update, gui.setHTML, gui.setStyle, and 27 DOM manipulation blocks |
+| 37 | `37_builtins48.arb` | 33 new builtins: list ops (append, sort, slice, etc.), math (abs, min, max, clamp), string (replicate, format, padLeft) |

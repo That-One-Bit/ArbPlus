@@ -1,7 +1,0 @@
-let image = input("Enter the name of the image file: ", fg:blue);
-
-image = encodeImage(image);   // → arb with image tag
-print("Image encoded, now decoding.");
-
-let name = input("Enter the name of the file that is about to be saved: ", fg:blue);
-decodeImage(image, name);      // write back to file

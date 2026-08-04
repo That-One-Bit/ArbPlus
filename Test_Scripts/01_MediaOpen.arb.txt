@@ -1,9 +1,0 @@
-#meta {
-    name: "ImageTest";
-    version: "1.0";
-    author: "ArbPlus";
-    description: "Basic Image Opening";
-}
-
-openMedia("../../test.mp4")
-// Doesn't work well with termux, as it tries opening from data/data termux

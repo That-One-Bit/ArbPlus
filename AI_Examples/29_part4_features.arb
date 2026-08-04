@@ -9,19 +9,19 @@ buildFile("loaded.c", cCode);
 let cSourcePath = "loaded.c";
 c{$!cSourcePath}
 
-print("/n=== $! with py{} ===");
+print("\n=== $! with py{} ===");
 let pyCode = "import math\nresult = math.sqrt(256)\nprint(f\"Python from file: sqrt(256) = {result}\")\npi_val = math.pi\nprint(f\"Pi from file: {pi_val}\")\n";
 buildFile("loaded.py", pyCode);
 let pySourcePath = "loaded.py";
 py{$!pySourcePath}
 
-print("/n=== $! with cmd{} ===");
+print("\n=== $! with cmd{} ===");
 let shCode = 'echo "Hello from loaded shell script!"\necho "ArbPlus + shell = power"\n';
 buildFile("loaded.sh", shCode);
 let shPath = "loaded.sh";
 cmd{$!shPath}
 
-print("/n=== i++ and k-- Shorthand ===");
+print("\n=== i++ and k-- Shorthand ===");
 let i = 0;
 for (i = 0 to 4) {
     print("i =", i);
@@ -42,7 +42,7 @@ while (n < 3) {
     n++;
 }
 
-print("/n=== let[] Forward Declaration ===");
+print("\n=== let[] Forward Declaration ===");
 let [future_value];
 print("future_value declared but unassigned:", future_value);
 future_value = "Now I have a value!";
@@ -51,22 +51,22 @@ print("future_value assigned:", future_value);
 let [maybe_never];
 print("maybe_never (never assigned):", maybe_never);
 
-print("/n=== var() Unquoted Variable Reference ===");
+print("\n=== var() Unquoted Variable Reference ===");
 let bg_color = "blue";
 let fg_color = "green";
 // var() lets you pass variable names where strings are expected
 print("Background:", var("bg_color"));
 print("Foreground:", var("fg_color"));
 
-print("/n=== count.time vs snap.time ===");
+print("\n=== count.time vs snap.time ===");
 print("snap.time (snapshot):", snap.time());
 print("count.time (moment):", count.time());
 
-print("/n=== count.time with components ===");
+print("\n=== count.time with components ===");
 print("count.time(Year, Month, Day):", count.time(Year: true, Month: true, Day: true));
 print("snap.time(Hour, Minute, Second):", snap.time(Hour: true, Minute: true, Second: true));
 
-print("/n=== count.time vs snap.time explanation ===");
+print("\n=== count.time vs snap.time explanation ===");
 print("snap.time: Returns a timestamp snapshot at the moment of the call.");
 print("          Useful for logging when something happened.");
 print("count.time: Returns current time, with optional live mode.");
@@ -74,4 +74,4 @@ print("            count.time(live: true, MS: 1000) prints a live updating clock
 print("            Setting a variable to count.time() captures the moment, not a live feed.");
 print("            For a live clock, call count.time(live: true) directly.");
 
-print("/nAll Part 4 tests passed!");
+print("\nAll Part 4 tests passed!");

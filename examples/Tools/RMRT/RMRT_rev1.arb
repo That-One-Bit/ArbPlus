@@ -1,0 +1,76 @@
+#meta {
+    name: "RMRT"
+    version: "0.2"
+    desc: "RMRT is a simple and efficient motor remapping tool for the Endeavour Robotics community. It uses Arb to replace the strings of REV Robotics \nprograms with the provided name, allowing for quicker file sharing between teams."
+    author: "Ethan Cavins - ThatOneBit"
+    authorEmail: "NoBytesLeftToTake@gmail.com"
+    warning: "This program is property of Endeavour Robotics. Unpermitted use or distribution of this program is strictly prohibited. Please contact the author \nfor permission to use or distribute this program."
+    languages: "Arb"
+}
+
+print("======================\n"..meta.name.." v"..meta.version);
+print("======================\n"..meta.desc.."\n======================");
+print(meta.author.."\n======================");
+print(meta.warning.."\n======================");
+
+switch (input("Do you accept (y//n): ")) {
+    case "y": {}
+    default: {
+        print("\nGoodbye.", fg:red); 
+        exit 1   
+    }
+};
+
+wait(0, 1);
+
+// Motor maps for each team, may include speed maps in the future
+let motorMap = map{
+    "31767": map{"fl": "frontLeft", "fr": "frontRight", "br": "backRight", "bl": "backLeft"}
+    "18989": map{"fl": "leftFrontMotor", "fr": "rightFrontMotor", "br": "rightBackMotor", "bl": "leftBackMotor"}
+    };
+
+let revTeamsMap = map{
+    "31767": map{"name": "Robo Warriors - Endeavour Middle", "clr": "#f81100", "school": "#027d3f"}
+    "18989": map{"name": "Tech Titans - Endeavour Middle", "clr": "#0ab4e4", "school": "#027d3f"}
+    };
+
+// Team selection and welcome message
+let userTeam = input("\nWhich team are you a part of? (Enter team number): ", fg:cyan)
+wait(0, 1, 500)
+if (userTeam == "31767") {
+        print(revTeamsMap[userTeam].name, fg:revTeamsMap[userTeam].clr);
+        print("\nWelcome to RMRT, Rampage\n", fg:revTeamsMap[userTeam].clr);
+} elif (userTeam == "18989") {
+        print(revTeamsMap[userTeam].name, fg:revTeamsMap[userTeam].clr);
+        print("\nWelcome to RMRT, Rusty.\n", fg:revTeamsMap[userTeam].clr);
+} else {
+        print("\nYour team is not recognized as a part of RMRT. Please contact the author at " .. meta.authorEmail .. " to have your team added to the program.\n", fg:'#ffbb00');
+        exit 2
+};
+
+wait(0, 1);
+
+let rev = file.read(input("Please enter the path to your file: ", fg:cyan));
+if (rev) {print("File found!", fg:revTeamsMap[userTeam].clr)};
+
+wait(0, 1);
+
+let sourceTeam = input("\nWhat team is your file from? (Enter team number): ", fg:cyan);
+
+if (not has(motorMap, sourceTeam)) {
+    print("\nThe source team is not recognized as a part of RMRT. Please contact the author at " .. meta.authorEmail .. " to have your team added to the program\n", fg:'#ffbb00');
+    exit 3
+};
+
+print(revTeamsMap[sourceTeam].name, fg:revTeamsMap[sourceTeam].clr);
+
+for (key in keys(motorMap[sourceTeam])) {
+    rev = replace(rev, motorMap[sourceTeam][key], motorMap[userTeam][key]);
+};
+
+let new = file.write(input("\nPlease enter the path to save your file: ", fg:cyan), rev);
+wait(0, 1);
+if (new == true) {print("File saved!", fg:revTeamsMap[userTeam].clr)};
+
+print("Come back soon!", fg:revTeamsMap[userTeam].clr);
+quit

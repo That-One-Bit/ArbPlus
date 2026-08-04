@@ -42,5 +42,5 @@ print("Alternatives: " .. locale.alt);
 print("");
 print("=== Other Globals ===");
 print("OS: " .. os.name);
-print("Battery: " .. battery());
-print("Network: " .. toString(network()));
+print("Battery: " .. os.Battery());
+print("Network: " .. toString(os.Network()));

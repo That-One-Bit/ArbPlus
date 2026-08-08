@@ -1,0 +1,8 @@
+loadExt("Tkinter.py", "python");
+
+tk.app_title("TitleTest");
+tk.app_geo("300", "250");
+tk.app_resize(True, False);
+tk.app_attrs(alpha:0.5, topmost:true);
+
+tk.mainloop();

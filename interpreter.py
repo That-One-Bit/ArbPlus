@@ -1,3 +1,4 @@
+## 00 -- 00_header.py -- header / imports
 #!/usr/bin/env python3
 """
 ArbPlus Language Interpreter
@@ -25,6 +26,11 @@ import ctypes
 import importlib.util
 import urllib.request
 import urllib.error
+import ast
+import inspect
+import types
+import copy
+import hashlib
 from typing import Any, Optional as Opt
 from dataclasses import dataclass, field
 from enum import Enum
@@ -33,6 +39,8 @@ from enum import Enum
 # DATA TYPE DEFINITIONS
 # =============================================================================
 
+
+## 01 -- 01_values.py -- ArbValue hierarchy + coercion/color helpers
 class ArbValue:
     """Base class for all ArbPlus typed values."""
     def __init__(self, val, type_name):
@@ -398,6 +406,8 @@ def color_name_to_ansi(name, is_bg=False):
 # ERROR TYPES
 # =============================================================================
 
+
+## 02 -- 02_errors.py -- exception classes
 class ArbPlusError(Exception):
     pass
 
@@ -426,6 +436,8 @@ class ExitException(Exception):
 # =============================================================================
 
 #token.marker
+
+## 03 -- 03_lexer.py -- TokenType / Token / Lexer
 class TokenType(Enum):
     INT = "INT"
     FLOAT = "FLOAT"
@@ -487,7 +499,7 @@ KEYWORDS = {
     "exit", "quit", "end", "not", "const", "let", "true", "false",
     "in", "to", "step",
     "repeat", "until", "switch", "case", "default",
-    "try", "catch", "finally", "del", "null",
+    "try", "catch", "finally", "del", "null", "from",
 }
 
 @dataclass
@@ -583,7 +595,7 @@ class Lexer:
                 self.advance()
                 self.advance()
                 start = self.pos
-                while self.pos < len(self.source) and (self.peek().isalpha() or self.peek() == '.'):
+                while self.pos < len(self.source) and self.peek().isalpha():
                     self.advance()
                 word = self.source[start:self.pos]
                 self.tokens.append(Token(TokenType.DASHDASH, '--' + word, self.line, self.col))
@@ -893,6 +905,8 @@ def _arb_equals(a, b):
 # =============================================================================
 
 @dataclass
+
+## 04 -- 04_ast_nodes.py -- AST node classes
 class MetaNode:
     entries: dict = field(default_factory=dict)
 
@@ -1028,11 +1042,6 @@ class OverrideDefaultsNode:
     defaults: dict = None
 
 @dataclass
-class ErrOVNode:
-    """--ErrOV true; flag — enables warning/error color overrides"""
-    enabled: bool = True
-
-@dataclass
 class TernaryNode:
     cond: Any = None
     then_val: Any = None
@@ -1132,6 +1141,8 @@ class ForwardDeclNode:
 # SECTION 5: PARSER
 # =============================================================================
 
+
+## 05 -- 05_parser.py -- Parser
 class Parser:
     def __init__(self, tokens):
         self.tokens = tokens
@@ -1169,6 +1180,17 @@ class Parser:
     def at_keyword(self, kw):
         return self.peek().type == TokenType.KEYWORD and self.peek().value == kw
 
+    def parse_dotted_ident(self):
+        """Parses IDENT (DOT IDENT)* into one string, e.g. 'tk.show_info'.
+        Used for --OV targets so extension-registered names (which are
+        always dotted, e.g. 'tk.show_info') can actually be overridden --
+        previously --OV only accepted a single bare IDENT token."""
+        parts = [self.expect(TokenType.IDENT).value]
+        while self.at(TokenType.DOT):
+            self.advance()
+            parts.append(self.expect(TokenType.IDENT).value)
+        return ".".join(parts)
+
     def parse(self):
         program = ProgramNode()
         program.metadata = MetaNode()
@@ -1190,14 +1212,25 @@ class Parser:
                 self.skip_terminators()
             elif self.at(TokenType.IMPORT):
                 self.advance()
-                name = self.expect(TokenType.IDENT).value
-                program.declarations.imports.append(name)
+                # #import "path_or_url"                 -- whole extension
+                # #import ClassName from "path_or_url"   -- just one class
+                class_name = None
+                if self.at(TokenType.IDENT):
+                    class_name = self.expect(TokenType.IDENT).value
+                    if not self.at_keyword("from"):
+                        raise ArbPlusError(
+                            f"Parse error: expected 'from' after '#import {class_name}' "
+                            f"at line {self.peek().line}"
+                        )
+                    self.advance()  # consume 'from'
+                path_tok = self.expect(TokenType.STRING)
+                program.declarations.imports.append({"path": path_tok.value, "class_name": class_name})
                 self.skip_terminators()
 
         self.skip_newlines()
 
         # Addition 30: --ErrOV flag at top level (before any --OV)
-        while self.peek().type == TokenType.DASHDASH and self.peek().value == '--ErrOV':
+        while self.peek().type == TokenType.DASHDASH and self.peek().value == '--err.ov':
             self.advance()
             # true is tokenized as TokenType.TRUE, not IDENT
             if self.peek().type in (TokenType.IDENT, TokenType.TRUE):
@@ -1220,7 +1253,7 @@ class Parser:
 
         while self.peek().type == TokenType.DASHDASH and self.peek().value == '--OV':
             self.advance()
-            base = self.expect(TokenType.IDENT).value
+            base = self.parse_dotted_ident()
             if base == "defaults":
                 # --OV defaults(fg, bg, b) [val1, val2, val3]
                 # or --OV defaults(fg, bg, b) (fg: cyan, bg: black, b: bright)
@@ -1259,7 +1292,7 @@ class Parser:
             elif self.at(TokenType.SWAP):
                 # --OV funcA <> funcB — complete swap
                 self.advance()  # consume <>
-                other = self.expect(TokenType.IDENT).value
+                other = self.parse_dotted_ident()
                 program.overrides.append(OverrideSwapNode(func_a=base, func_b=other))
             elif self.at(TokenType.LPAREN):
                 # --OV base(args) new — argument-aware override with fixed args
@@ -1269,11 +1302,11 @@ class Parser:
                     fixed_args.append(self.parse_expr())
                     if self.at(TokenType.COMMA): self.advance()
                 self.expect(TokenType.RPAREN)
-                new = self.expect(TokenType.IDENT).value
+                new = self.parse_dotted_ident()
                 program.overrides.append(OverrideNode(base_name=base, new_name=new,
                                                     fixed_args=fixed_args, fixed_kwargs=None))
             else:
-                new = self.expect(TokenType.IDENT).value
+                new = self.parse_dotted_ident()
                 program.overrides.append(OverrideNode(base, new))
             self.skip_terminators()
 
@@ -1371,16 +1404,15 @@ class Parser:
             # Addition 30: --ErrOV true; flag
             if self.peek().type == TokenType.DASHDASH and self.peek().value == '--ErrOV':
                 self.advance()
-                enabled = True
-                if self.peek().type in (TokenType.IDENT, TokenType.TRUE):
+                if self.peek().type == TokenType.IDENT:
                     val = self.advance().value
-                    enabled = val in ('true', True)
-                statements.append(ErrOVNode(enabled=enabled))
+                    if val == 'true':
+                        self.err_ov_enabled = True
                 self.skip_terminators()
                 continue
             if self.peek().type == TokenType.DASHDASH and self.peek().value == '--OV':
                 self.advance()
-                base = self.expect(TokenType.IDENT).value
+                base = self.parse_dotted_ident()
                 if base == "defaults":
                     self.expect(TokenType.LPAREN)
                     keys = []
@@ -1417,7 +1449,7 @@ class Parser:
                 elif self.at(TokenType.SWAP):
                     # --OV funcA <> funcB — complete swap
                     self.advance()  # consume <>
-                    other = self.expect(TokenType.IDENT).value
+                    other = self.parse_dotted_ident()
                     statements.append(OverrideSwapNode(func_a=base, func_b=other))
                 elif self.at(TokenType.LPAREN):
                     # --OV base(args) new — argument-aware override with fixed args
@@ -1427,11 +1459,11 @@ class Parser:
                         fixed_args.append(self.parse_expr())
                         if self.at(TokenType.COMMA): self.advance()
                     self.expect(TokenType.RPAREN)
-                    new = self.expect(TokenType.IDENT).value
+                    new = self.parse_dotted_ident()
                     statements.append(OverrideNode(base_name=base, new_name=new,
                                                    fixed_args=fixed_args, fixed_kwargs=None))
                 else:
-                    new = self.expect(TokenType.IDENT).value
+                    new = self.parse_dotted_ident()
                     statements.append(OverrideNode(base, new))
                 self.skip_terminators()
                 continue
@@ -2173,6 +2205,8 @@ class Parser:
 # ENVIRONMENT AND CLIENT
 # =============================================================================
 
+
+## 06 -- 06_environment.py -- Environment
 class Environment:
     def __init__(self, parent=None):
         self.vars = {}
@@ -2235,6 +2269,8 @@ class Environment:
 # ARBPLUS EVALUATOR
 # =============================================================================
 
+
+## 07 -- 07_interp_core.py -- Interpreter core: init/run/execute/eval/call
 class Interpreter:
     def __init__(self, script_path="."):
         if script_path != ".":
@@ -2267,10 +2303,11 @@ class Interpreter:
             self._print_warning("No #meta block found — running with defaults")
         if program.declarations:
             self.declared_shells = set(program.declarations.uses)
-            self.declared_imports = set(program.declarations.imports)
-            # Process imports - load .arb module files
-            for imp_name in program.declarations.imports:
-                self._import_module(imp_name, self.global_env)
+            self.declared_imports = set(e["path"] for e in program.declarations.imports)
+            # #import now loads EXTENSIONS (swapped from its old role of
+            # loading .arb modules -- that's loadMod()'s job now)
+            for imp_entry in program.declarations.imports:
+                self._import_extension_decl(imp_entry, self.global_env)
         # Read --ErrOV flag
         if program.metadata.entries.get("_err_ov"):
             self.err_ov_enabled = True
@@ -2278,7 +2315,9 @@ class Interpreter:
         mod_ov = program.metadata.entries.get("_mod_ov", False)
         chd_ov = program.metadata.entries.get("_chd_ov", False)
         for ov in program.overrides:
-            if ov.base_name == "defaults":
+            if isinstance(ov, OverrideSwapNode):
+                self._apply_override_swap(ov)
+            elif ov.base_name == "defaults":
                 defaults = program.metadata.entries.get("_ov_defaults", {})
                 for k, v in defaults.items():
                     # Gate warning/error colors
@@ -2286,9 +2325,6 @@ class Interpreter:
                         self._print_warning(f"--OV for {k} ignored: --ErrOV true; not set")
                         continue
                     self.default_colors[k] = v
-            elif isinstance(ov, OverrideSwapNode):
-                # Handle swap overrides at load time
-                pass  # Swaps are handled when executed as statements
             else:
                 # Check gating flags for extension/module/child overrides
                 target = ov.new_name if ov.fixed_args is None else ov.new_name
@@ -2492,9 +2528,6 @@ class Interpreter:
             else:
                 raise ArbPlusError(f"Cannot assign to index on {target.type_name}")
 
-        elif isinstance(node, ErrOVNode):
-            self.err_ov_enabled = node.enabled
-
         elif isinstance(node, OverrideDefaultsNode):
             for k, v in node.defaults.items():
                 # Warning/error colors gated by --ErrOV
@@ -2513,49 +2546,48 @@ class Interpreter:
                 self.overrides[node.base_name] = node.new_name
 
         elif isinstance(node, OverrideSwapNode):
-            # --OV funcA <> funcB — completely swap two functions
-            cross_category = False
-            # Swap builtins (both in builtins)
-            if node.func_a in self.builtins and node.func_b in self.builtins:
-                self.builtins[node.func_a], self.builtins[node.func_b] = self.builtins[node.func_b], self.builtins[node.func_a]
-            # Swap user functions (both in functions)
-            elif node.func_a in self.functions and node.func_b in self.functions:
-                self.functions[node.func_a], self.functions[node.func_b] = self.functions[node.func_b], self.functions[node.func_a]
-            # Swap extensions (both in extensions)
-            elif node.func_a in self.extensions and node.func_b in self.extensions:
-                self.extensions[node.func_a], self.extensions[node.func_b] = self.extensions[node.func_b], self.extensions[node.func_a]
-            else:
-                # Cross-category swap (e.g. builtin <-> user function)
-                cross_category = True
-                fa = node.func_a
-                fb = node.func_b
-                # Resolve role-prefixed user function names
-                for candidate in [fa, fb]:
-                    if "." not in candidate:
-                        for fname in self.functions:
-                            if fname.endswith("." + candidate):
-                                if candidate == fa:
-                                    fa = fname
-                                else:
-                                    fb = fname
-                                break
-                # Create bidirectional override mappings
-                # overrides[base] = new_name means calling new_name invokes base
-                self.overrides[fa] = fb  # calling fb invokes fa
-                self.overrides[fb] = fa  # calling fa invokes fb
-            # For same-category swaps, also update existing override mappings
-            if not cross_category:
-                a_to_b = None
-                b_to_a = None
-                for base, new_name in list(self.overrides.items()):
-                    if new_name == node.func_a:
-                        a_to_b = base
-                    if new_name == node.func_b:
-                        b_to_a = base
-                if a_to_b:
-                    self.overrides[a_to_b] = node.func_b
-                if b_to_a:
-                    self.overrides[b_to_a] = node.func_a
+            self._apply_override_swap(node)
+
+    def _apply_override_swap(self, node):
+        """--OV funcA <> funcB — completely swap two functions. Shared by
+        both the startup declarations pass and inline statement execution,
+        so `--OV a <> b` behaves identically regardless of whether it's
+        written at the top of the file or inline in the executable body
+        (previously the declarations-block form was a silent no-op)."""
+        cross_category = False
+        if node.func_a in self.builtins and node.func_b in self.builtins:
+            self.builtins[node.func_a], self.builtins[node.func_b] = self.builtins[node.func_b], self.builtins[node.func_a]
+        elif node.func_a in self.functions and node.func_b in self.functions:
+            self.functions[node.func_a], self.functions[node.func_b] = self.functions[node.func_b], self.functions[node.func_a]
+        elif node.func_a in self.extensions and node.func_b in self.extensions:
+            self.extensions[node.func_a], self.extensions[node.func_b] = self.extensions[node.func_b], self.extensions[node.func_a]
+        else:
+            cross_category = True
+            fa = node.func_a
+            fb = node.func_b
+            for candidate in [fa, fb]:
+                if "." not in candidate:
+                    for fname in self.functions:
+                        if fname.endswith("." + candidate):
+                            if candidate == fa:
+                                fa = fname
+                            else:
+                                fb = fname
+                            break
+            self.overrides[fa] = fb
+            self.overrides[fb] = fa
+        if not cross_category:
+            a_to_b = None
+            b_to_a = None
+            for base, new_name in list(self.overrides.items()):
+                if new_name == node.func_a:
+                    a_to_b = base
+                if new_name == node.func_b:
+                    b_to_a = base
+            if a_to_b:
+                self.overrides[a_to_b] = node.func_b
+            if b_to_a:
+                self.overrides[b_to_a] = node.func_a
 
         elif isinstance(node, DelNode):
             if not env.has_local(node.var_name):
@@ -2906,6 +2938,8 @@ class Interpreter:
             return e.value if e.value else ArbString("")
         return ArbString("")
 
+
+## 08 -- 08_interp_blocks_and_builtins_a.py -- Interpreter: c/py/shell blocks + collection/math/string builtins
     def execute_c_block(self, node, env):
         compiler = shutil.which("gcc") or shutil.which("cc") or shutil.which("clang")
         if not compiler:
@@ -3562,6 +3596,7 @@ class Interpreter:
             "os.screen": self._b_screen,
             "os.name": self._b_os_name, "os.version": self._b_os_version,
             "loadExt": self._b_load_ext,
+            "loadMod": self._b_load_mod,
             "random": self._b_random, "randInt": self._b_randint,
             "random.seed": self._b_random_seed,
             "bindKey": self._b_bindkey,
@@ -3623,6 +3658,8 @@ class Interpreter:
             "fromChar": self._b_fromChar,
         }
 
+
+## 09 -- 09_interp_builtins_b.py -- Interpreter: more builtins + builtin dispatch table
     def _b_random(self, args, kwargs, env):
         import random as _random
         if not hasattr(self, '_rng'):
@@ -4060,6 +4097,8 @@ class Interpreter:
     def _b_tobool(self, args, kwargs, env): return ArbBool(arb_truthy(args[0]))
     def _b_typeof(self, args, kwargs, env): return ArbString(args[0].type_name if isinstance(args[0], ArbValue) else "unknown")
 
+
+## 10 -- 10_interp_file_dir_time.py -- Interpreter: file/dir/addr/txtRC/time/locale builtins
     def _b_readfile(self, args, kwargs, env):
         path = self._resolve_path(arb_to_string(args[0]))
         if not os.path.exists(path): raise ArbPlusError(f"File not found: {path}")
@@ -4539,27 +4578,72 @@ class Interpreter:
         if ml == "cs": return self._b_cs([], {}, env)
         raise ArbPlusError(f"Unknown os member: {member}")
 
+
+## 11 -- 11_interp_ext_net.py -- Interpreter: extensions, imports, fetch/dl, meta builtins
     def _b_load_ext(self, args, kwargs, env):
         raw_path = arb_to_string(args[0])
         lang = arb_to_string(args[1]).lower() if len(args) > 1 else "python"
-        path = self._resolve_path(raw_path)
-        # Built-in extension search: if not found, check extensions/ directory
-        # (like Python's built-in modules — loadExt("ext_gui_web", "python") works
-        #  without specifying the full path)
-        if not os.path.exists(path):
-            # Try extensions/ directory relative to interpreter location
+
+        # --- Search both the script's own directory and the interpreter's
+        #     extensions/ directory. If a matching extension exists in
+        #     BOTH, prefer whichever one declares the higher meta version
+        #     (per Addition 20's extension metadata). ---
+        name_patterns = [
+            raw_path,
+            raw_path + ".py",
+            "ext_" + raw_path,
+            "ext_" + raw_path + ".py",
+        ]
+
+        def find_in_dir(base_dir):
+            if not base_dir:
+                return None
+            for pattern in name_patterns:
+                candidate = os.path.normpath(os.path.join(base_dir, pattern))
+                if os.path.isfile(candidate):
+                    return candidate
+            return None
+
+        # An explicit/absolute path from the script always wins outright —
+        # no dual-directory search needed in that case.
+        explicit_path = self._resolve_path(raw_path)
+        if os.path.isfile(explicit_path):
+            path = explicit_path
+        else:
             interp_dir = os.path.dirname(os.path.abspath(__file__))
-            ext_dir = os.path.join(interp_dir, "extensions")
-            # Try with .py suffix
-            for candidate in [
-                os.path.join(ext_dir, raw_path + ".py"),
-                os.path.join(ext_dir, raw_path),
-                os.path.join(ext_dir, "ext_" + raw_path + ".py"),
-                os.path.join(ext_dir, "ext_" + raw_path),
-            ]:
-                if os.path.exists(candidate):
-                    path = candidate
-                    break
+            script_dir = self.script_path
+            ext_search_dir = os.path.join(interp_dir, "extensions")
+
+            script_match = find_in_dir(script_dir)
+            interp_match = find_in_dir(ext_search_dir)
+
+            if script_match and interp_match:
+                script_meta = self._parse_ext_metadata(script_match, lang) or {}
+                interp_meta = self._parse_ext_metadata(interp_match, lang) or {}
+                script_ver = self._version_tuple(script_meta.get("version", ""))
+                interp_ver = self._version_tuple(interp_meta.get("version", ""))
+                if interp_ver > script_ver:
+                    path = interp_match
+                    print(
+                        f"[loadExt] '{raw_path}' found in both script and interpreter "
+                        f"directories; using interpreter copy (v{interp_meta.get('version','?')} "
+                        f"> v{script_meta.get('version','?')})."
+                    )
+                else:
+                    path = script_match
+                    if interp_meta.get("version"):
+                        print(
+                            f"[loadExt] '{raw_path}' found in both script and interpreter "
+                            f"directories; using script copy (v{script_meta.get('version','?')} "
+                            f">= v{interp_meta.get('version','?')})."
+                        )
+            elif script_match:
+                path = script_match
+            elif interp_match:
+                path = interp_match
+            else:
+                path = explicit_path  # doesn't exist; falls through to the error below
+
         if not os.path.exists(path): raise ArbPlusError(f"Extension file not found: {path}")
         # Parse and store extension metadata (Addition 20)
         if not hasattr(self, 'ext_metadata'):
@@ -4583,8 +4667,7 @@ class Interpreter:
             if spec is None: raise ArbPlusError(f"Cannot load Python extension: {path}")
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
-            if hasattr(mod, 'register'):
-                mod.register(self)
+            self._call_extension_entry_point(mod, path)
             return ArbBool(True)
         elif lang in ("c", "c++", "cpp"):
             compiler = shutil.which("gcc") or shutil.which("cc") or shutil.which("clang")
@@ -4608,6 +4691,71 @@ class Interpreter:
         else:
             raise ArbPlusError(f"Unsupported extension language: {lang}")
 
+    def _call_extension_entry_point(self, mod, path_for_msg):
+        """Call an extension module's registration entry point. Prefers a
+        function literally named `register(engine)` (the documented
+        convention). If none exists -- e.g. a minifier renamed it, like
+        `def A0(engine):` -- fall back to scanning the module for any
+        single top-level callable that takes exactly one required argument
+        and calls .register_extension(/.register_hook(/.allow_py_module( on
+        it, and use that instead. Warns either way when falling back, and
+        warns (rather than silently doing nothing) if no entry point at all
+        could be found."""
+        if hasattr(mod, 'register') and callable(getattr(mod, 'register')):
+            mod.register(self)
+            return
+        candidates = []
+        for name in dir(mod):
+            if name.startswith('_'):
+                continue
+            obj = getattr(mod, name)
+            if not callable(obj) or inspect.isclass(obj):
+                continue
+            try:
+                sig = inspect.signature(obj)
+            except (ValueError, TypeError):
+                continue
+            required = [p for p in sig.parameters.values()
+                        if p.default is inspect.Parameter.empty
+                        and p.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)]
+            if len(required) != 1:
+                continue
+            try:
+                src = inspect.getsource(obj)
+            except (OSError, TypeError):
+                continue
+            if any(marker in src for marker in
+                   ('.register_extension(', '.register_hook(', '.allow_py_module(')):
+                candidates.append((name, obj))
+
+        if len(candidates) == 1:
+            name, func = candidates[0]
+            self._print_warning(f"extension '{path_for_msg}' has no function named 'register'; "
+                                 f"using '{name}' as the entry point instead (detected by signature)")
+            func(self)
+        elif len(candidates) > 1:
+            names = ", ".join(n for n, _ in candidates)
+            self._print_warning(f"extension '{path_for_msg}' has no function named 'register' and "
+                                 f"multiple possible entry points were found ({names}); none were called. "
+                                 f"Rename one of them to 'register' to disambiguate.")
+        else:
+            self._print_warning(f"extension '{path_for_msg}' has no 'register(engine)' function "
+                                 f"(or anything that looks like one) -- nothing was registered.")
+
+    def _version_tuple(self, version_str):
+        """Parse a dotted version string like '1.2.3' into a tuple of ints
+        for comparison, e.g. (1, 2, 3). Non-numeric or empty parts fall
+        back to (0,) so an unversioned extension always loses a tiebreak
+        against any explicitly versioned one."""
+        version_str = (version_str or "").strip()
+        if not version_str:
+            return (0,)
+        parts = []
+        for chunk in version_str.split("."):
+            digits = "".join(c for c in chunk if c.isdigit())
+            parts.append(int(digits) if digits else 0)
+        return tuple(parts) if parts else (0,)
+
     def register_extension(self, name, func):
         self.extensions[name] = func
 
@@ -4616,14 +4764,272 @@ class Interpreter:
             self.ext_hooks[builtin_name] = []
         self.ext_hooks[builtin_name].append(hook_func)
 
-    def _import_module(self, mod_name, env):
-        """Import a .arb module file and register its functions with a prefix."""
+    def _find_extension_file(self, raw_path):
+        """Dual-directory search shared by #import and loadExt: checks the
+        script's own directory AND the interpreter's extensions/ directory,
+        preferring the higher meta version if a match exists in both."""
+        name_patterns = [raw_path, raw_path + ".py", "ext_" + raw_path, "ext_" + raw_path + ".py"]
+
+        def find_in_dir(base_dir):
+            if not base_dir:
+                return None
+            for pattern in name_patterns:
+                candidate = os.path.normpath(os.path.join(base_dir, pattern))
+                if os.path.isfile(candidate):
+                    return candidate
+            return None
+
+        explicit_path = self._resolve_path(raw_path)
+        if os.path.isfile(explicit_path):
+            return explicit_path
+
+        interp_dir = os.path.dirname(os.path.abspath(__file__))
+        script_match = find_in_dir(self.script_path)
+        interp_match = find_in_dir(os.path.join(interp_dir, "extensions"))
+
+        if script_match and interp_match:
+            script_meta = self._parse_ext_metadata(script_match, "python") or {}
+            interp_meta = self._parse_ext_metadata(interp_match, "python") or {}
+            if self._version_tuple(interp_meta.get("version", "")) > self._version_tuple(script_meta.get("version", "")):
+                return interp_match
+            return script_match
+        return script_match or interp_match
+
+    def _fetch_extension_url_cached(self, url):
+        """Fetches an extension from a URL, caching the result to disk
+        (keyed by a hash of the URL) so repeated #import "url" calls across
+        runs don't re-fetch every time. Soft/best-effort: any problem with
+        the cache itself (permissions, corrupt file) just falls back to a
+        live fetch rather than failing the import."""
+        cache_dir = os.path.join(os.path.expanduser("~"), ".arbplus", "ext_cache")
+        cache_key = hashlib.sha256(url.encode("utf-8")).hexdigest()
+        cache_path = os.path.join(cache_dir, cache_key + ".py")
+
+        if os.path.isfile(cache_path):
+            try:
+                with open(cache_path, "r", encoding="utf-8") as f:
+                    return f.read()
+            except Exception:
+                pass  # fall through to a live fetch
+
+        try:
+            with urllib.request.urlopen(url, timeout=5) as resp:
+                text = resp.read().decode("utf-8")
+        except Exception as e:
+            raise ArbPlusError(f"#import: could not fetch '{url}': {e}")
+
+        try:
+            os.makedirs(cache_dir, exist_ok=True)
+            with open(cache_path, "w", encoding="utf-8") as f:
+                f.write(text)
+        except Exception:
+            pass  # caching is best-effort; the fetch itself already succeeded
+
+        return text
+
+    def _import_extension_decl(self, entry, env):
+        """Handles a single #import declaration: {"path": ..., "class_name": ...}.
+        `path` may be: a local file (searched in both the script directory
+        AND the interpreter's extensions/ directory), an http(s) URL, or a
+        JSON manifest (a .json path/URL, or any file whose JSON content has
+        "arbplus_manifest": true) listing multiple extensions to load."""
+        raw_path = entry["path"]
+        class_name = entry.get("class_name")
+
+        # --- Resolve to source text + a display name, checking for a manifest first ---
+        if raw_path.startswith("http://") or raw_path.startswith("https://"):
+            text = self._fetch_extension_url_cached(raw_path)
+            display_name = raw_path
+        else:
+            found_path = self._find_extension_file(raw_path)
+            if not found_path or not os.path.isfile(found_path):
+                raise ArbPlusError(f"#import: extension file not found: {raw_path} "
+                                    f"(checked script directory and interpreter extensions/ directory)")
+            with open(found_path, "r", encoding="utf-8") as f:
+                text = f.read()
+            display_name = found_path
+
+        # Manifest? -- either a .json path/URL, or content that parses as
+        # JSON and declares itself one via "arbplus_manifest": true
+        is_manifest = raw_path.endswith(".json")
+        manifest_data = None
+        if is_manifest or not raw_path.endswith(".py"):
+            try:
+                candidate = json.loads(text)
+                if isinstance(candidate, dict) and candidate.get("arbplus_manifest"):
+                    manifest_data = candidate
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+        if manifest_data is not None:
+            for sub_entry in manifest_data.get("extensions", []):
+                self._import_extension_decl(
+                    {"path": sub_entry["path"], "class_name": sub_entry.get("class")}, env)
+            return
+
+        # --- Whole-file import (no class_name) ---
+        if class_name is None:
+            namespace = {"__name__": "arbplus_ext"}
+            try:
+                exec(compile(text, display_name, "exec"), namespace)
+            except Exception as e:
+                raise ArbPlusError(f"#import: error loading '{display_name}': {e}")
+            mod = types.SimpleNamespace(**namespace)
+            self._call_extension_entry_point(mod, display_name)
+            return
+
+        # --- Class-only import: extract just class_name + its dependencies ---
+        subset_source, called = self._load_extension_class(text, class_name, display_name)
+        if not called:
+            self._print_warning(f"#import {class_name} from \"{raw_path}\": extracted the class but found no "
+                                 f"register_extension(...) calls for it in the original entry point -- "
+                                 f"nothing was registered.")
+
+    def _load_extension_class(self, source, class_name, display_name):
+        """Parses `source`, extracts `class_name` plus the module-level names
+        it transitively depends on, plus a synthesized register(engine)
+        containing only THAT class's register_extension/register_hook calls
+        (found by inspecting the original file's entry-point function).
+        Executes just that reduced source. Returns (subset_source, called_ok)."""
+        try:
+            tree = ast.parse(source)
+        except SyntaxError as e:
+            raise ArbPlusError(f"#import {class_name} from \"{display_name}\": could not parse extension source: {e}")
+
+        top_nodes = {}
+        stmt_nodes = []
+        class_node = None
+        entry_candidates = []
+
+        for node in tree.body:
+            if isinstance(node, ast.ClassDef):
+                top_nodes[node.name] = node
+                if node.name == class_name:
+                    class_node = node
+            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                top_nodes[node.name] = node
+                entry_candidates.append(node)
+            elif isinstance(node, ast.Assign):
+                for t in node.targets:
+                    if isinstance(t, ast.Name):
+                        top_nodes[t.id] = node
+            elif isinstance(node, (ast.Import, ast.ImportFrom, ast.Try)):
+                stmt_nodes.append(node)  # keep unconditionally -- cheap, avoids missing indirect deps
+
+        if class_node is None:
+            available = [n.name for n in tree.body if isinstance(n, ast.ClassDef)]
+            raise ArbPlusError(
+                f"#import: class '{class_name}' not found in \"{display_name}\". "
+                f"Available classes: {', '.join(available) if available else '(none -- this extension has no classes)'}"
+            )
+
+        def free_names(node):
+            return {n.id for n in ast.walk(node) if isinstance(n, ast.Name)}
+
+        needed = free_names(class_node)
+        for sn in stmt_nodes:
+            needed |= free_names(sn)  # try/import blocks need their own deps resolved too
+        included = set()
+        for _ in range(8):  # bounded transitive-closure passes
+            grew = False
+            for name in list(needed):
+                if name in top_nodes and name not in included:
+                    included.add(name)
+                    needed |= free_names(top_nodes[name])
+                    grew = True
+            if not grew:
+                break
+
+        entry_node = next((n for n in entry_candidates if n.name == "register"), None)
+        if entry_node is None:
+            entry_node = self._guess_entry_point_ast(entry_candidates)
+
+        mini_register_lines = []
+        if entry_node is not None:
+            for stmt in ast.walk(entry_node):
+                if isinstance(stmt, ast.Call) and isinstance(stmt.func, ast.Attribute) \
+                        and stmt.func.attr in ("register_extension", "register_hook"):
+                    if stmt.args:
+                        target = stmt.args[-1]
+                        if isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name) \
+                                and target.value.id == class_name:
+                            # Rebind the call's object to our own `engine` param --
+                            # the original may have called it through a local
+                            # alias (e.g. `A=engine; A.register_extension(...)`)
+                            # that won't exist in the synthesized function.
+                            rebound = copy.deepcopy(stmt)
+                            rebound.func.value = ast.Name(id="engine", ctx=ast.Load())
+                            mini_register_lines.append(ast.unparse(rebound))
+
+        # Emit everything in ORIGINAL top-level source order (not
+        # stmt_nodes-then-deps) so a later statement that depends on an
+        # earlier one (e.g. `except s as h:` needing `s = ImportError`
+        # defined above it) stays in a valid, runnable order.
+        stmt_node_set = set(id(n) for n in stmt_nodes)
+        pieces = []
+        for node in tree.body:
+            if node is class_node:
+                continue
+            if id(node) in stmt_node_set:
+                pieces.append(ast.unparse(node))
+            elif isinstance(node, ast.ClassDef) and node.name in included:
+                pieces.append(ast.unparse(node))
+            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in included:
+                pieces.append(ast.unparse(node))
+            elif isinstance(node, ast.Assign) and any(
+                    isinstance(t, ast.Name) and t.id in included for t in node.targets):
+                pieces.append(ast.unparse(node))
+        pieces.append(ast.unparse(class_node))
+        register_src = "def register(engine):\n"
+        register_src += "".join(f"    {line}\n" for line in mini_register_lines) if mini_register_lines else "    pass\n"
+        pieces.append(register_src)
+        subset_source = "\n\n".join(pieces)
+
+        namespace = {"__name__": "arbplus_ext_partial"}
+        try:
+            exec(compile(subset_source, f"{display_name}::{class_name}", "exec"), namespace)
+        except Exception as e:
+            raise ArbPlusError(f"#import {class_name} from \"{display_name}\": error executing extracted class: {e}")
+        namespace["register"](self)
+        return subset_source, bool(mini_register_lines)
+
+    def _guess_entry_point_ast(self, entry_candidates):
+        """AST-level version of the entry-point heuristic (used when we're
+        extracting source, not inspecting an already-loaded module). Doesn't
+        require the register_extension(...) call target to literally be the
+        function's parameter name -- minified code often aliases it first
+        (e.g. `def A0(engine): A=engine; A.register_extension(...)`) -- just
+        that the function takes exactly one required argument and contains
+        at least one such call somewhere in its body."""
+        for node in entry_candidates:
+            if len(node.args.args) != 1:
+                continue
+            for stmt in ast.walk(node):
+                if isinstance(stmt, ast.Call) and isinstance(stmt.func, ast.Attribute) \
+                        and stmt.func.attr in ("register_extension", "register_hook", "allow_py_module"):
+                    return node
+        return None
+
+
+        """Import a .arb module file (by local name/path) and register its
+        functions with a prefix. Kept for internal reuse; the user-facing
+        entry point for this is now the loadMod() builtin -- #import was
+        swapped to load extensions instead (see _import_extension_decl)."""
         if mod_name in self.imported_modules:
-            return  # already imported
+            return True  # already imported
         if mod_name in self._importing:
             raise ArbPlusError(f"Circular import detected: {mod_name}")
         self._importing.add(mod_name)
-        
+
+        if mod_name.startswith("http://") or mod_name.startswith("https://"):
+            try:
+                with urllib.request.urlopen(mod_name, timeout=5) as resp:
+                    source = resp.read().decode("utf-8")
+            except Exception as e:
+                self._importing.discard(mod_name)
+                raise ArbPlusError(f"loadMod(): could not fetch '{mod_name}': {e}")
+            return self._import_module_source(mod_name, source, env)
+
         # Find the module file
         mod_path = mod_name
         if not mod_path.endswith('.arb'):
@@ -4631,27 +5037,39 @@ class Interpreter:
         if not os.path.isabs(mod_path):
             mod_path = os.path.join(self.script_path, mod_path)
         if not os.path.exists(mod_path):
-            # Not an .arb module - might be a Python extension loaded via loadExt
             self._importing.discard(mod_name)
-            return
-        
+            return False
+
         with open(mod_path, 'r', encoding='utf-8') as f:
             source = f.read()
+        return self._import_module_source(mod_name, source, env)
+
+    def _import_module_source(self, mod_name, source, env):
+        """Shared tail of module loading: parse `source` as an .arb program
+        and register its functions under the mod_name.funcname prefix."""
         lexer = Lexer(source)
         tokens = lexer.tokenize()
         parser = Parser(tokens)
         program = parser.parse()
-        
-        # Register functions with module prefix
+
         mod_funcs = {}
         for fname, func in program.functions.items():
-            # Store as modname.funcname for prefixed calls
             prefixed_name = f"{mod_name}.{fname}"
             self.functions[prefixed_name] = func
             mod_funcs[fname] = func
-        # Also store without prefix for potential direct access
         self.imported_modules[mod_name] = mod_funcs
         self._importing.discard(mod_name)
+        return True
+
+    def _b_load_mod(self, args, kwargs, env):
+        """loadMod(path_or_url) -- loads an .arb MODULE (swapped roles with
+        #import, which now loads extensions). Local path, or a direct
+        http(s) URL to the .arb source."""
+        if not args:
+            raise ArbPlusError("loadMod() requires a path or URL")
+        mod_name = arb_to_string(args[0])
+        ok = self._import_module(mod_name, env)
+        return ArbBool(bool(ok))
 
 
     # =====================================================================
@@ -4947,378 +5365,8 @@ class Interpreter:
 
 
     # ── List operations (Addition 48) ──────────────────────────────
-    def _b_append(self, args, kwargs, env):
-        """append(list, item) — add item to end of list (mutates and returns list)."""
-        if not args:
-            raise ArbPlusError("append() requires a list and an item")
-        lst = args[0]
-        if not isinstance(lst, ArbList):
-            raise ArbPlusError("append() first argument must be a list")
-        for item in args[1:]:
-            lst.val.append(item)
-        return lst
 
-    def _b_prepend(self, args, kwargs, env):
-        """prepend(list, item) — add item to beginning of list (mutates and returns list)."""
-        if not args:
-            raise ArbPlusError("prepend() requires a list and an item")
-        lst = args[0]
-        if not isinstance(lst, ArbList):
-            raise ArbPlusError("prepend() first argument must be a list")
-        for item in reversed(args[1:]):
-            lst.val.insert(0, item)
-        return lst
-
-    def _b_insert(self, args, kwargs, env):
-        """insert(list, index, item) — insert item at index (mutates and returns list)."""
-        if len(args) < 3:
-            raise ArbPlusError("insert() requires a list, index, and item")
-        lst = args[0]
-        if not isinstance(lst, ArbList):
-            raise ArbPlusError("insert() first argument must be a list")
-        idx = int(args[1].py())
-        if idx < 0:
-            idx = max(0, len(lst.val) + idx)
-        lst.val.insert(idx, args[2])
-        return lst
-
-    def _b_removeAt(self, args, kwargs, env):
-        """removeAt(list, index) — remove and return item at index."""
-        if len(args) < 2:
-            raise ArbPlusError("removeAt() requires a list and an index")
-        lst = args[0]
-        if not isinstance(lst, ArbList):
-            raise ArbPlusError("removeAt() first argument must be a list")
-        idx = int(args[1].py())
-        if idx < 0:
-            idx = len(lst.val) + idx
-        if idx < 0 or idx >= len(lst.val):
-            raise ArbPlusError(f"removeAt() index {idx} out of range (0-{len(lst.val)-1})")
-        removed = lst.val.pop(idx)
-        return removed
-
-    def _b_pop(self, args, kwargs, env):
-        """pop(list) — remove and return last item from list."""
-        if not args:
-            raise ArbPlusError("pop() requires a list")
-        lst = args[0]
-        if not isinstance(lst, ArbList):
-            raise ArbPlusError("pop() first argument must be a list")
-        if not lst.val:
-            raise ArbPlusError("pop() list is empty")
-        return lst.val.pop()
-
-    def _b_shift(self, args, kwargs, env):
-        """shift(list) — remove and return first item from list."""
-        if not args:
-            raise ArbPlusError("shift() requires a list")
-        lst = args[0]
-        if not isinstance(lst, ArbList):
-            raise ArbPlusError("shift() first argument must be a list")
-        if not lst.val:
-            raise ArbPlusError("shift() list is empty")
-        return lst.val.pop(0)
-
-    def _b_reverse(self, args, kwargs, env):
-        """reverse(list|string) — reverse a list or string."""
-        if not args:
-            raise ArbPlusError("reverse() requires a list or string")
-        v = args[0]
-        if isinstance(v, ArbList):
-            return ArbList(list(reversed(v.val)))
-        return ArbString(arb_to_string(v)[::-1])
-
-    def _b_sort(self, args, kwargs, env):
-        """sort(list) — return a sorted copy of the list."""
-        if not args:
-            raise ArbPlusError("sort() requires a list")
-        v = args[0]
-        if isinstance(v, ArbList):
-            try:
-                sorted_vals = sorted(v.val, key=lambda x: x.py() if isinstance(x, ArbValue) else x)
-            except TypeError:
-                sorted_vals = sorted(v.val, key=lambda x: arb_to_string(x))
-            return ArbList(sorted_vals)
-        raise ArbPlusError("sort() first argument must be a list")
-
-    def _b_indexOf(self, args, kwargs, env):
-        """indexOf(list|string, item) — return index of first match, or -1."""
-        if len(args) < 2:
-            raise ArbPlusError("indexOf() requires a collection and an item")
-        coll = args[0]
-        target = args[1]
-        if isinstance(coll, ArbList):
-            for i, item in enumerate(coll.val):
-                if _arb_equals(item, target):
-                    return ArbInt(i)
-            return ArbInt(-1)
-        s = arb_to_string(coll)
-        t = arb_to_string(target)
-        idx = s.find(t)
-        return ArbInt(idx)
-
-    def _b_includes(self, args, kwargs, env):
-        """includes(list|string, item) — check if collection contains item."""
-        if len(args) < 2:
-            raise ArbPlusError("includes() requires a collection and an item")
-        coll = args[0]
-        target = args[1]
-        if isinstance(coll, ArbList):
-            for item in coll.val:
-                if _arb_equals(item, target):
-                    return ArbBool(True)
-            return ArbBool(False)
-        return ArbBool(arb_to_string(target) in arb_to_string(coll))
-
-    def _b_slice(self, args, kwargs, env):
-        """slice(list|string, start, end) — return a slice from start to end (exclusive)."""
-        if len(args) < 2:
-            raise ArbPlusError("slice() requires a collection and a start index")
-        coll = args[0]
-        start = int(args[1].py()) if len(args) > 1 else 0
-        end = int(args[2].py()) if len(args) > 2 else None
-        if isinstance(coll, ArbList):
-            return ArbList(coll.val[start:end])
-        s = arb_to_string(coll)
-        return ArbString(s[start:end])
-
-    def _b_flatten(self, args, kwargs, env):
-        """flatten(list) — flatten one level of nesting."""
-        if not args:
-            raise ArbPlusError("flatten() requires a list")
-        lst = args[0]
-        if not isinstance(lst, ArbList):
-            raise ArbPlusError("flatten() first argument must be a list")
-        result = []
-        for item in lst.val:
-            if isinstance(item, ArbList):
-                result.extend(item.val)
-            else:
-                result.append(item)
-        return ArbList(result)
-
-    def _b_range(self, args, kwargs, env):
-        """range(n) or range(start, end, step) — generate a list of integers."""
-        if not args:
-            raise ArbPlusError("range() requires at least one argument")
-        if len(args) == 1:
-            n = int(args[0].py())
-            return ArbList([ArbInt(i) for i in range(max(0, n))])
-        start = int(args[0].py())
-        end = int(args[1].py())
-        step = int(args[2].py()) if len(args) > 2 else 1
-        return ArbList([ArbInt(i) for i in range(start, end, step)])
-
-    def _b_foreach(self, args, kwargs, env):
-        """foreach(list, fn) — call fn(item, index) for each item. fn is a string name."""
-        if len(args) < 2:
-            raise ArbPlusError("foreach() requires a list and a function name")
-        lst = args[0]
-        if not isinstance(lst, ArbList):
-            raise ArbPlusError("foreach() first argument must be a list")
-        fn_name = arb_to_string(args[1])
-        for i, item in enumerate(lst.val):
-            self.call_user_function(fn_name, [item, ArbInt(i)], {}, env)
-        return lst
-
-    # ── Math operations (Addition 48) ───────────────────────────────
-    def _b_abs(self, args, kwargs, env):
-        """abs(n) — absolute value."""
-        if not args:
-            raise ArbPlusError("abs() requires a number")
-        v = args[0].py()
-        if isinstance(v, int):
-            return ArbInt(abs(v))
-        return ArbFloat(abs(float(v)))
-
-    def _b_round(self, args, kwargs, env):
-        """round(n, decimals: 0) — round a number to optional decimal places."""
-        if not args:
-            raise ArbPlusError("round() requires a number")
-        v = float(args[0].py())
-        decimals = int(kwargs.get("decimals", ArbInt(0)).py()) if "decimals" in kwargs else 0
-        if decimals <= 0:
-            return ArbInt(round(v))
-        return ArbFloat(round(v, decimals))
-
-    def _b_floor(self, args, kwargs, env):
-        """floor(n) — round down to nearest integer."""
-        if not args:
-            raise ArbPlusError("floor() requires a number")
-        return ArbInt(int(float(args[0].py()) // 1))
-
-    def _b_ceil(self, args, kwargs, env):
-        """ceil(n) — round up to nearest integer."""
-        if not args:
-            raise ArbPlusError("ceil() requires a number")
-        import math
-        return ArbInt(math.ceil(float(args[0].py())))
-
-    def _b_min(self, args, kwargs, env):
-        """min(a, b, ...) or min(list) — return the minimum value."""
-        if not args:
-            raise ArbPlusError("min() requires at least one argument")
-        if len(args) == 1 and isinstance(args[0], ArbList):
-            vals = [a.py() for a in args[0].val]
-        else:
-            vals = [a.py() for a in args]
-        if not vals:
-            raise ArbPlusError("min() of empty collection")
-        result = min(vals)
-        if isinstance(result, int):
-            return ArbInt(result)
-        return ArbFloat(result)
-
-    def _b_max(self, args, kwargs, env):
-        """max(a, b, ...) or max(list) — return the maximum value."""
-        if not args:
-            raise ArbPlusError("max() requires at least one argument")
-        if len(args) == 1 and isinstance(args[0], ArbList):
-            vals = [a.py() for a in args[0].val]
-        else:
-            vals = [a.py() for a in args]
-        if not vals:
-            raise ArbPlusError("max() of empty collection")
-        result = max(vals)
-        if isinstance(result, int):
-            return ArbInt(result)
-        return ArbFloat(result)
-
-    def _b_sum(self, args, kwargs, env):
-        """sum(list) — sum all numeric elements."""
-        if not args:
-            raise ArbPlusError("sum() requires a list")
-        lst = args[0]
-        if isinstance(lst, ArbList):
-            vals = [a.py() for a in lst.val]
-        else:
-            vals = [lst.py()]
-        if not vals:
-            return ArbInt(0)
-        result = sum(vals)
-        if isinstance(result, int):
-            return ArbInt(result)
-        return ArbFloat(result)
-
-    def _b_clamp(self, args, kwargs, env):
-        """clamp(n, min, max) — constrain n to [min, max] range."""
-        if len(args) < 3:
-            raise ArbPlusError("clamp() requires value, min, and max")
-        v = float(args[0].py())
-        lo = float(args[1].py())
-        hi = float(args[2].py())
-        result = max(lo, min(v, hi))
-        if isinstance(args[0].py(), int):
-            return ArbInt(int(result))
-        return ArbFloat(result)
-
-    # ── String operations (Addition 48) ─────────────────────────────
-    def _b_repeat(self, args, kwargs, env):
-        """repeat(str, n) — repeat string n times."""
-        if len(args) < 2:
-            raise ArbPlusError("repeat() requires a string and a count")
-        s = arb_to_string(args[0])
-        n = int(args[1].py())
-        return ArbString(s * max(0, n))
-
-    def _b_startsWith(self, args, kwargs, env):
-        """startsWith(str, prefix) — check if string starts with prefix."""
-        if len(args) < 2:
-            raise ArbPlusError("startsWith() requires a string and a prefix")
-        return ArbBool(arb_to_string(args[0]).startswith(arb_to_string(args[1])))
-
-    def _b_endsWith(self, args, kwargs, env):
-        """endsWith(str, suffix) — check if string ends with suffix."""
-        if len(args) < 2:
-            raise ArbPlusError("endsWith() requires a string and a suffix")
-        return ArbBool(arb_to_string(args[0]).endswith(arb_to_string(args[1])))
-
-    def _b_capitalize(self, args, kwargs, env):
-        """capitalize(str) — capitalize first letter, lowercase rest."""
-        if not args:
-            raise ArbPlusError("capitalize() requires a string")
-        s = arb_to_string(args[0])
-        return ArbString(s[:1].upper() + s[1:].lower() if s else s)
-
-    def _b_titleCase(self, args, kwargs, env):
-        """titleCase(str) — capitalize first letter of each word."""
-        if not args:
-            raise ArbPlusError("titleCase() requires a string")
-        return ArbString(arb_to_string(args[0]).title())
-
-    def _b_padLeft(self, args, kwargs, env):
-        """padLeft(str, len, char: " ") — pad string on left to given length."""
-        if len(args) < 2:
-            raise ArbPlusError("padLeft() requires a string and a length")
-        s = arb_to_string(args[0])
-        n = int(args[1].py())
-        ch = arb_to_string(args[2]) if len(args) > 2 else " "
-        if len(s) >= n:
-            return ArbString(s)
-        return ArbString(ch[0] * (n - len(s)) + s)
-
-    def _b_padRight(self, args, kwargs, env):
-        """padRight(str, len, char: " ") — pad string on right to given length."""
-        if len(args) < 2:
-            raise ArbPlusError("padRight() requires a string and a length")
-        s = arb_to_string(args[0])
-        n = int(args[1].py())
-        ch = arb_to_string(args[2]) if len(args) > 2 else " "
-        if len(s) >= n:
-            return ArbString(s)
-        return ArbString(s + ch[0] * (n - len(s)))
-
-    def _b_replaceAt(self, args, kwargs, env):
-        """replaceAt(str, index, replacement) — replace character at index with new string."""
-        if len(args) < 3:
-            raise ArbPlusError("replaceAt() requires a string, index, and replacement")
-        s = arb_to_string(args[0])
-        idx = int(args[1].py())
-        repl = arb_to_string(args[2])
-        if idx < 0:
-            idx = len(s) + idx
-        if idx < 0 or idx >= len(s):
-            raise ArbPlusError(f"replaceAt() index {idx} out of range")
-        return ArbString(s[:idx] + repl + s[idx+1:])
-
-    def _b_format(self, args, kwargs, env):
-        """format(template, ...args) — replace {0}, {1}, ... in template with args."""
-        if not args:
-            raise ArbPlusError("format() requires a template string")
-        template = arb_to_string(args[0])
-        rest = args[1:]
-        for i, a in enumerate(rest):
-            template = template.replace("{" + str(i) + "}", arb_to_string(a))
-        return ArbString(template)
-
-    def _b_charCodeAt(self, args, kwargs, env):
-        """charCodeAt(str, index) — return Unicode code point of character at index."""
-        if len(args) < 2:
-            raise ArbPlusError("charCodeAt() requires a string and an index")
-        s = arb_to_string(args[0])
-        idx = int(args[1].py())
-        if idx < 0 or idx >= len(s):
-            raise ArbPlusError(f"charCodeAt() index {idx} out of range")
-        return ArbInt(ord(s[idx]))
-
-    def _b_fromChar(self, args, kwargs, env):
-        """fromChar(code) — convert Unicode code point to a single-character string."""
-        if not args:
-            raise ArbPlusError("fromChar() requires a code point")
-        return ArbString(chr(int(args[0].py())))
-
-    def _resolve_path(self, path):
-        if os.path.isabs(path):
-            return os.path.normpath(path)
-        if path.startswith("./") or path.startswith("../") or path in (".", ".."):
-            return os.path.normpath(os.path.join(self.script_path, path))
-        return os.path.normpath(os.path.join(self.script_path, path))
-
-
-# =============================================================================
-# Entry Point / File Handler
-# =============================================================================
-
+## 12 -- 12_cli.py -- CLI entry point (run_file/main)
 def _extract_auto_mode(argv):
     auto_mode = False
     auto_input_text = ""
@@ -5395,3 +5443,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

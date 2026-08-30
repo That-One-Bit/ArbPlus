@@ -1,5 +1,14 @@
 # ArbPlus — "A Really Bad Programming Language"
 
+> [!WARNING]
+> Archived/Deprecated in favor of ArbPL, meaning the same thing but worse. ArbPL is the handmade alternative to ArbPlus with all features planned and actual set rules, making myself the sole creator of the language and maintainer of its syntax, semantics, grammar, limitations, and other things such as stdlibs. 
+
+> [!IMPORTANT]
+> ArbPL is not available to the public yet, but will be once the interpreter is finished.
+> So far, the lexer, parser, constants, build methods, and shell are finished/almost done for v0.0.0.
+> v0.0.0 will be number functions only, without the add(), sub(), mul(), div(), and mod() statements.
+> Instead, those functions will be +, -, *, /, and %; like a normal GPL. This is subject to change and likely will once KWFs are implemented.
+
 A hybrid scripting language with inline C, shell escapes, Python escapes, tagged binary containers, OS-level globals, string interpolation, map types, module imports, file loading, and a Python-based tree-walking interpreter.
 
 ## Quick Start
